@@ -21,7 +21,7 @@ __all__ = [
     "autocorr",
     "mcse_mean",
     "mcse_sd",
-    "mcse_quantile"
+    "mcse_quantile",
 ]
 
 
