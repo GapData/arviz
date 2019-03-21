@@ -898,7 +898,6 @@ def summary(
             if not (0 < q < 1):
                 _log.warning("mcse quantile values need to be in range of 0 to 1.")
                 continue
-            print(key)
             metrics.append(quantile_mcse(posterior, q, var_names=var_names))
             metric_names.append(key)
 
