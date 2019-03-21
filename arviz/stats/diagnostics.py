@@ -20,8 +20,8 @@ __all__ = [
     "geweke",
     "autocorr",
     "mcse_mean",
-    "mcse_mean",
-    "quantile_mcse",
+    "mcse_sd",
+    "mcse_quantile"
 ]
 
 
@@ -415,7 +415,7 @@ def _mcse_sd_ufunc(ary):
     return target
 
 
-def quantile_mcse(data, prob, var_names=None):
+def mcse_quantile(data, prob, var_names=None):
     r""""""
     if isinstance(data, np.ndarray):
         return _get_split_rhat(data)

@@ -19,7 +19,7 @@ from .diagnostics import (
     rhat,
     mcse_mean,
     mcse_sd,
-    quantile_mcse,
+    mcse_quantile,
 )
 from ..utils import _var_names
 
@@ -898,7 +898,7 @@ def summary(
             if not (0 < q < 1):
                 _log.warning("mcse quantile values need to be in range of 0 to 1.")
                 continue
-            metrics.append(quantile_mcse(posterior, q, var_names=var_names))
+            metrics.append(mcse_quantile(posterior, q, var_names=var_names))
             metric_names.append(key)
 
     joined = xr.concat(metrics, dim="metric").assign_coords(metric=metric_names)
