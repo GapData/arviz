@@ -946,7 +946,7 @@ def _make_ufunc(func, index=Ellipsis, n_output=1, **kwargs):  # noqa: D202
 
     def _multi_ufunc(ary):
         targets = tuple(np.empty(ary.shape[:-2]) for _ in range(n_output))
-        for idx in np.ndindex(target.shape):
+        for idx in np.ndindex(ary.shape[:-2]):
             results = func(ary[idx].ravel(), **kwargs)
             for i, res in enumerate(results):
                 targets[i][idx] = np.asarray(res)[index]
