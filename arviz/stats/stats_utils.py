@@ -3,7 +3,10 @@ import numpy as np
 
 __all__ = ["make_ufunc", "logsumexp"]
 
-def make_ufunc(func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, out=None, args=None, **kwargs):  # noqa: D202
+
+def make_ufunc(
+    func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, args=None, **kwargs
+):  # noqa: D202
     """Make ufunc from a function.
 
     Parameters
@@ -19,8 +22,6 @@ def make_ufunc(func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, out=None,
         Slice ndarray with `index`. Defaults to `Ellipsis`.
     ravel : bool, optional
         If true, ravel the ndarray before calling `func`.
-    out : ndarray or tuple of ndarray, optional
-        Alternative output location. If defined, ufunc will return None.
     args : tuple, optional
         Arguments for `func`.
     **kwargs
@@ -34,33 +35,61 @@ def make_ufunc(func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, out=None,
     if n_dims < 1:
         raise TypeError("n_dims must be one or higher.")
 
-    def _ufunc(ary):
-        """General ufunc for single-output function."""
-        target = np.empty(ary.shape[:-n_dims])
-        for idx in np.ndindex(target.shape):
-            ary_idx = ary[idx].ravel() if ravel else ary[idx]
-            target[idx] = np.asarray(func(ary_idx, **kwargs))[index]
-        return target
+    if args is None:
+        args = tuple()
+    if not isinstance(args, tuple):
+        raise TypeError("`args` needs to be tuple.")
 
-    def _multi_ufunc(ary):
-        """General ufunc for multi-output function."""
-        targets = tuple(np.empty(ary.shape[:-2]) for _ in range(n_output))
-        for idx in np.ndindex(ary.shape[:-2]):
+    def _ufunc(ary, out=None):
+        """General ufunc for single-output function."""
+        if out is None:
+            out = np.empty(ary.shape[:-n_dims])
+        else:
+            if out.shape != ary.shape[:-n_dims]:
+                msg = "Shape incorrect for `out`: {}.".format(out.shape)
+                msg += " Correct shape is {}".format(ary.shape[:-n_dims])
+                raise TypeError(msg)
+        for idx in np.ndindex(out.shape):
             ary_idx = ary[idx].ravel() if ravel else ary[idx]
-            results = func(ary_idx, **kwargs)
+            out[idx] = np.asarray(func(ary_idx, *args, **kwargs))[index]
+        return out
+
+    def _multi_ufunc(ary, out=None):
+        """General ufunc for multi-output function."""
+        element_shape = ary.shape[:-n_dims]
+        if out is None:
+            out = tuple(np.empty(element_shape) for _ in range(n_output))
+        else:
+            raise_error = False
+            if isinstance(out, tuple):
+                out_shape = tuple(item.shape for item in out)
+                correct_shape = tuple(element_shape for _ in range(n_output))
+                if out_shape != correct_shape:
+                    raise_error = True
+            else:
+                raise_error = True
+            if raise_error:
+                msg = "Shapes incorrect for `out`: {}.".format(out_shape)
+                msg += " Correct shapes are {}".format(correct_shape)
+                raise TypeError(msg)
+        for idx in np.ndindex(element_shape):
+            ary_idx = ary[idx].ravel() if ravel else ary[idx]
+            results = func(ary_idx, *args, **kwargs)
             for i, res in enumerate(results):
-                targets[i][idx] = np.asarray(res)[index]
-        return targets
+                out[i][idx] = np.asarray(res)[index]
+        return out
+
     if n_output > 1:
         ufunc = _multi_ufunc
     else:
         ufunc = _ufunc
 
-    update_docstring(ufunc, func, n_output)
+    arg_input = len(args) + len(kwargs)
+    update_docstring(ufunc, func, arg_input, n_output)
     return ufunc
 
 
-def update_docstring(ufunc, func, n_output=1):
+def update_docstring(ufunc, func, arg_input=1, n_output=1):
     """Update ArviZ generated ufunc docstring."""
     module = ""
     name = ""
@@ -78,15 +107,20 @@ def update_docstring(ufunc, func, n_output=1):
         ufunc.__doc__ += "\n"
     ufunc.__doc__ += 'Call ufunc from xarray against "chain" and "draw" dimensions:'
     ufunc.__doc__ += "\n\n"
+    input_core_dims = "({},)".format(", ".join(['("chain", "draw")'] * (arg_input + 1)))
     if n_output > 1:
-        output_core_dims = "tuple([] for _ in range({}))".format(n_output)
-        ufunc.__doc__ += 'xr.apply_ufunc(ufunc, dataset, input_core_dims=(("chain", "draw"),), output_core_dims={})'.format(output_core_dims)
+        output_core_dims = " tuple([] for _ in range({}))".format(n_output)
+        msg = "xr.apply_ufunc(ufunc, dataset, input_core_dims={}, output_core_dims={})"
+        ufunc.__doc__ += msg.format(input_core_dims, output_core_dims)
     else:
-        ufunc.__doc__ += 'xr.apply_ufunc(ufunc, dataset, input_core_dims=(("chain", "draw"),))'
+        output_core_dims = ""
+        msg = "xr.apply_ufunc(ufunc, dataset, input_core_dims={})"
+        ufunc.__doc__ += msg.format(input_core_dims)
     if docstring:
         ufunc.__doc__ += "\n\n"
-        ufunc.__doc__ += "Docstring for "
-        ufunc.__doc__ += func.__name__
+        ufunc.__doc__ += module
+        ufunc.__doc__ += name
+        ufunc.__doc__ += " docstring:"
         ufunc.__doc__ += "\n\n"
         ufunc.__doc__ += docstring
 

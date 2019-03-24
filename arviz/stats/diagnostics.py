@@ -339,10 +339,7 @@ def mcse_mean_sd(data, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     mcse_mean_sd_ufunc = _make_ufunc(_mcse_mean_sd, ravel=False)
     return xr.apply_ufunc(
-        mcse_mean_sd_ufunc,
-        dataset,
-        input_core_dims=(("chain", "draw"),),
-        output_core_dims=([], []),
+        mcse_mean_sd_ufunc, dataset, input_core_dims=(("chain", "draw"),), output_core_dims=([], [])
     )
 
 
@@ -672,6 +669,7 @@ def _mcse_quantile(ary, prob):
     th2 = sorted_ary[th2_idx]
     return mcse, th1, th2, size_ess
 
+
 def _mc_error(x, batches=5, circular=False):
     """Calculate the simulation standard error, accounting for non-independent samples.
 
@@ -718,6 +716,7 @@ def _mc_error(x, batches=5, circular=False):
             std = np.std(means)
 
         return std / np.sqrt(batches)
+
 
 def _multichain_statistics(ary):
     """Calculate efficiently multichain statistics for summary.

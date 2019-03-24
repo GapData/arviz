@@ -721,9 +721,9 @@ def summary(
                 output_core_dims=tuple([] for _ in range(2)),
             )
         )
-        metric_names.extend(("hpd {:g}%".format(100 * alpha / 2),
-                             "hpd {:g}%".format(100 * (1 - alpha / 2))
-                             ))
+        metric_names.extend(
+            ("hpd {:g}%".format(100 * alpha / 2), "hpd {:g}%".format(100 * (1 - alpha / 2)))
+        )
 
     if include_circ:
         metrics.append(
@@ -753,7 +753,6 @@ def summary(
         )
         metric_names.append("circular mc error")
 
-
         metrics.extend(
             xr.apply_ufunc(
                 _make_ufunc(hpd, n_output=2, credible_interval=credible_interval, circular=True),
@@ -762,9 +761,12 @@ def summary(
                 output_core_dims=tuple([] for _ in range(2)),
             )
         )
-        metric_names.extend(("circular hpd {:g}%".format(100 * alpha / 2),
-                             "circular hpd {:g}%".format(100 * (1 - alpha / 2))
-                             ))
+        metric_names.extend(
+            (
+                "circular hpd {:g}%".format(100 * alpha / 2),
+                "circular hpd {:g}%".format(100 * (1 - alpha / 2)),
+            )
+        )
 
     if len(posterior.chain) > 1:
         metrics.extend(
@@ -773,7 +775,8 @@ def summary(
                 posterior,
                 input_core_dims=(("chain", "draw"),),
                 output_core_dims=tuple([] for _ in range(5)),
-        ))
+            )
+        )
         metric_names.extend(("mcse_mean", "mcse_sd", "bulk_ess", "tail_ess", "r_hat"))
 
     joined = xr.concat(metrics, dim="metric").assign_coords(metric=metric_names)
