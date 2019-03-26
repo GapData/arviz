@@ -55,7 +55,7 @@ def bfmi(data):
     return _bfmi(dataset.sample_stats.energy)
 
 
-def effective_sample_size(data, *, var_names=None):
+def effective_sample_size_mean(data, *, var_names=None):
     r"""Calculate estimate of the effective sample size.
 
     Parameters
@@ -100,11 +100,60 @@ def effective_sample_size(data, *, var_names=None):
     var_names = _var_names(var_names, dataset)
 
     dataset = dataset if var_names is None else dataset[var_names]
-    ess_ufunc = _make_ufunc(_ess, ravel=False)
-    return xr.apply_ufunc(ess_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+    ess_mean_ufunc = _make_ufunc(_ess_mean, ravel=False)
+    return xr.apply_ufunc(ess_mean_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def bulk_effective_sample_size(data, *, var_names=None):
+def effective_sample_size_sd(data, *, var_names=None):
+    r"""Calculate estimate of the effective sample size.
+
+    Parameters
+    ----------
+    data : obj
+        Any object that can be converted to an az.InferenceData object
+        Refer to documentation of az.convert_to_dataset for details
+        At least 2 posterior chains are needed to compute this diagnostic of one or more
+        stochastic parameters.
+    var_names : list
+      Names of variables to include in the effective_sample_size report
+
+    Returns
+    -------
+    ess : xarray.Dataset
+        Return the effective sample size, :math:`\hat{N}_{eff}`
+
+    Notes
+    -----
+    The diagnostic is computed by:
+
+    .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
+    .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
+
+    where :math:`\hat{\rho}_t` is the estimated _autocorrelation at lag t, and T
+    is the first odd positive integer for which the sum
+    :math:`\hat{\rho}_{T+1} + \hat{\rho}_{T+1}` is negative.
+
+    The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
+    criterion (Geyer, 1992; Geyer, 2011).
+
+    References
+    ----------
+    https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
+
+    Gelman et al. BDA (2014) Formula 11.8
+    """
+    if isinstance(data, np.ndarray):
+        return _ess(data)
+
+    dataset = convert_to_dataset(data, group="posterior")
+    var_names = _var_names(var_names, dataset)
+
+    dataset = dataset if var_names is None else dataset[var_names]
+    ess_sd_ufunc = _make_ufunc(_ess_sd, ravel=False)
+    return xr.apply_ufunc(ess_sd_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+
+
+def effective_sample_size_bulk(data, *, var_names=None):
     r"""Calculate estimate of the bulk effective sample size.
 
     Parameters
@@ -153,7 +202,7 @@ def bulk_effective_sample_size(data, *, var_names=None):
     return xr.apply_ufunc(ess_bulk_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def tail_effective_sample_size(data, *, var_names=None):
+def effective_sample_size_tail(data, *, var_names=None):
     r"""Calculate estimate of the tail effective sample size.
 
     Parameters
@@ -200,6 +249,59 @@ def tail_effective_sample_size(data, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ess_tail_ufunc = _make_ufunc(_ess_tail, ravel=False)
     return xr.apply_ufunc(ess_tail_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+
+
+def effective_sample_size_quantile(data, prob, *, var_names=None):
+    r"""Calculate estimate of the tail effective sample size.
+
+    Parameters
+    ----------
+    data : obj
+        Any object that can be converted to an az.InferenceData object
+        Refer to documentation of az.convert_to_dataset for details
+        At least 2 posterior chains are needed to compute this diagnostic of one or more
+        stochastic parameters.
+    prob : float
+        quantile
+    var_names : list
+      Names of variables to include in the effective_sample_size report
+
+    Returns
+    -------
+    xarray.Dataset
+        Return the tail effective sample size, :math:`\hat{N}_{eff}`
+
+    Notes
+    -----
+    The diagnostic is computed by:
+
+    .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
+    .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
+
+    where :math:`\hat{\rho}_t` is the estimated _autocorrelation at lag t, and T
+    is the first odd positive integer for which the sum
+    :math:`\hat{\rho}_{T+1} + \hat{\rho}_{T+1}` is negative.
+
+    The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
+    criterion (Geyer, 1992; Geyer, 2011).
+
+    References
+    ----------
+    https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
+
+    Gelman et al. BDA (2014) Formula 11.8
+    """
+    if isinstance(data, np.ndarray):
+        return _ess_quantile(data, prob)
+
+    dataset = convert_to_dataset(data, group="posterior")
+    var_names = _var_names(var_names, dataset)
+
+    dataset = dataset if var_names is None else dataset[var_names]
+    ess_quantile_ufunc = _make_ufunc(_ess_quantile, ravel=False)
+    return xr.apply_ufunc(
+        ess_quantile_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+    )
 
 
 def rhat(data, *, var_names=None):
@@ -526,6 +628,7 @@ def _rhat_rank_normalized(ary, round_to=2):
 
 def _ess(sample_array):
     """Compute the effective sample size for a 2D array."""
+    sample_array = np.asarray(sample_array)
     shape = np.asarray(sample_array).shape
     if len(shape) != 2:
         raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
@@ -596,14 +699,15 @@ def _ess_sd(ary):
     return min(_ess(ary), _ess(ary ** 2))
 
 
-def ess_quantile(ary, prob):
+def _ess_quantile(ary, prob):
     q, = _quantile(ary, prob)
     I = ary <= q
     return _ess(_z_scale(_split_chains(I)))
 
 
-def conv_quantile(ary, prob):
-    ess = ess_quantile(ary, prob)
+def _conv_quantile(ary, prob):
+    """Return mcse, Q05, Q95, Seff"""
+    ess = _ess_quantile(ary, prob)
     p = [0.1586553, 0.8413447, 0.05, 0.95]
     with np.errstate(invalid="ignore"):
         a = stats.beta.ppf(prob, ess * prob + 1, ess * (1 - prob) + 1)
@@ -653,7 +757,6 @@ def _mcse_mean_sd(ary):
 
 
 def _mcse_quantile(ary, prob):
-    """Return mcse, Q05, Q95, Seff"""
     mcse, *_ = conv_quantile(ary, prob)
     return mcse
 
