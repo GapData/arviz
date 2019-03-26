@@ -1,7 +1,12 @@
 """Stats-utility functions for ArviZ"""
-import numpy as np
+import warnings
 
-__all__ = ["make_ufunc", "logsumexp"]
+import numpy as np
+from scipy.signal import fftconvolve
+from scipy.stats.mstats import mquantiles
+
+
+__all__ = ["autocorr", "make_ufunc"]
 
 
 def make_ufunc(
@@ -102,7 +107,7 @@ def update_docstring(ufunc, func, arg_input=1, n_output=1):
         docstring += func.__doc__
     ufunc.__doc__ += "\n\n"
     if module or name:
-        ufunc.__doc__ += "This function is a thin ufunc wrapper for "
+        ufunc.__doc__ += "This function is a ufunc wrapper for "
         ufunc.__doc__ += func.__name__ + "."
         ufunc.__doc__ += "\n"
     ufunc.__doc__ += 'Call ufunc from xarray against "chain" and "draw" dimensions:'
@@ -179,3 +184,67 @@ def logsumexp(ary, *, b=None, b_inv=None, axis=None, keepdims=False, out=None, c
     out += ary_max.squeeze() if not keepdims else ary_max
     # transform to scalar if possible
     return out if out.shape else dtype(out)
+
+
+def autocorr(x):
+    """Compute autocorrelation using FFT for every lag for the input array.
+
+    See https://en.wikipedia.org/wiki/autocorrelation#Efficient_computation
+
+    Parameters
+    ----------
+    x : Numpy array
+        An array containing MCMC samples
+
+    Returns
+    -------
+    acorr: Numpy array same size as the input array
+    """
+    y = x - x.mean()
+    len_y = len(y)
+    with warnings.catch_warnings():
+        # silence annoying numpy tuple warning in another library
+        # silence hack added in 0.3.3+
+        warnings.simplefilter("ignore")
+        result = fftconvolve(y, y[::-1])
+    acorr = result[len(result) // 2 :]
+    acorr /= np.arange(len_y, 0, -1)
+    with np.errstate(invalid="ignore"):
+        acorr /= acorr[0]
+    return acorr
+
+
+def _autocov(x):
+    """Compute autocovariance estimates for every lag for the input array.
+
+    Parameters
+    ----------
+    x : Numpy array
+        An array containing MCMC samples
+
+    Returns
+    -------
+    acov: Numpy array same size as the input array
+    """
+    acorr = autocorr(x)
+    varx = np.var(x, ddof=0)
+    acov = acorr * varx
+    return acov
+
+
+def _rint(num):
+    rnum = np.rint(num)
+    return int(num)
+
+
+def _round(num, decimals):
+    """Skip rounding if decimals is None."""
+    if decimals is not None:
+        num = np.round(num, decimals)
+    return num
+
+
+def _quantile(ary, q, axis=None, limit=None):
+    if limit is None:
+        limit = tuple()
+    return mquantiles(ary, q, alphap=1, betap=1, axis=axis, limit=limit)

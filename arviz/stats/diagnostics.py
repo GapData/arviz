@@ -3,12 +3,10 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from scipy.signal import fftconvolve
 from scipy import stats
-
 import xarray as xr
 
-from .stats_utils import make_ufunc as _make_ufunc
+from .stats_utils import make_ufunc as _make_ufunc, _autocov, _rint, _round, _quantile
 from ..data import convert_to_dataset
 from ..utils import _var_names
 
@@ -20,57 +18,10 @@ __all__ = [
     "tail_effective_sample_size",
     "rhat",
     "geweke",
-    "autocorr",
     "mcse_mean",
     "mcse_sd",
     "mcse_quantile",
 ]
-
-
-def autocorr(x):
-    """Compute autocorrelation using FFT for every lag for the input array.
-
-    See https://en.wikipedia.org/wiki/autocorrelation#Efficient_computation
-
-    Parameters
-    ----------
-    x : Numpy array
-        An array containing MCMC samples
-
-    Returns
-    -------
-    acorr: Numpy array same size as the input array
-    """
-    y = x - x.mean()
-    len_y = len(y)
-    with warnings.catch_warnings():
-        # silence annoying numpy tuple warning in another library
-        # silence hack added in 0.3.3+
-        warnings.simplefilter("ignore")
-        result = fftconvolve(y, y[::-1])
-    acorr = result[len(result) // 2 :]
-    acorr /= np.arange(len_y, 0, -1)
-    with np.errstate(invalid="ignore"):
-        acorr /= acorr[0]
-    return acorr
-
-
-def _autocov(x):
-    """Compute autocovariance estimates for every lag for the input array.
-
-    Parameters
-    ----------
-    x : Numpy array
-        An array containing MCMC samples
-
-    Returns
-    -------
-    acov: Numpy array same size as the input array
-    """
-    acorr = autocorr(x)
-    varx = np.var(x, ddof=1) * (len(x) - 1) / len(x)
-    acov = acorr * varx
-    return acov
 
 
 def bfmi(data):
@@ -192,14 +143,14 @@ def bulk_effective_sample_size(data, *, var_names=None):
     Gelman et al. BDA (2014) Formula 11.8
     """
     if isinstance(data, np.ndarray):
-        return _bulk_ess(data)
+        return _ess_bulk(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
 
     dataset = dataset if var_names is None else dataset[var_names]
-    bulk_ess_ufunc = _make_ufunc(_bulk_ess, ravel=False)
-    return xr.apply_ufunc(bulk_ess_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+    ess_bulk_ufunc = _make_ufunc(_ess_bulk, ravel=False)
+    return xr.apply_ufunc(ess_bulk_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
 def tail_effective_sample_size(data, *, var_names=None):
@@ -241,17 +192,17 @@ def tail_effective_sample_size(data, *, var_names=None):
     Gelman et al. BDA (2014) Formula 11.8
     """
     if isinstance(data, np.ndarray):
-        return _tail_ess(data)
+        return _ess_tail(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
 
     dataset = dataset if var_names is None else dataset[var_names]
-    tail_ess_ufunc = _make_ufunc(_tail_ess, ravel=False)
-    return xr.apply_ufunc(tail_ess_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+    ess_tail_ufunc = _make_ufunc(_ess_tail, ravel=False)
+    return xr.apply_ufunc(ess_tail_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def rhat(data, var_names=None):
+def rhat(data, *, var_names=None):
     r"""Compute estimate of rank normalized R-hat for a set of traces.
 
     The rank normalized R-hat diagnostic tests for lack of convergence by comparing the variance between
@@ -305,7 +256,7 @@ def rhat(data, var_names=None):
     return xr.apply_ufunc(_rhat_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def mcse_mean(data, var_names=None):
+def mcse_mean(data, *, var_names=None):
     r""""""
     if isinstance(data, np.ndarray):
         return _mcse_mean(data)
@@ -318,7 +269,7 @@ def mcse_mean(data, var_names=None):
     return xr.apply_ufunc(mcse_mean_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def mcse_sd(data, var_names=None):
+def mcse_sd(data, *, var_names=None):
     r""""""
     if isinstance(data, np.ndarray):
         return _mcse_sd(data)
@@ -331,7 +282,7 @@ def mcse_sd(data, var_names=None):
     return xr.apply_ufunc(mcse_sd_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
-def mcse_mean_sd(data, var_names=None):
+def mcse_mean_sd(data, *, var_names=None):
     r""""""
     if isinstance(data, np.ndarray):
         return _mcse_mean_sd(data)
@@ -346,7 +297,7 @@ def mcse_mean_sd(data, var_names=None):
     )
 
 
-def mcse_quantile(data, prob, var_names=None):
+def mcse_quantile(data, prob, *, var_names=None):
     r""""""
     if isinstance(data, np.ndarray):
         return _mcse_quantile(data, prob)
@@ -530,10 +481,7 @@ def _rhat(values, round_to=2):
     rhat = np.sqrt(
         (between_chain_variance / within_chain_variance + num_samples - 1) / (num_samples)
     )
-    if round_to is None:
-        return rhat
-    else:
-        return round(rhat, round_to)
+    return _round(rhat, round_to)
 
 
 def _split_rhat(values, round_to=2):
@@ -559,25 +507,21 @@ def _split_rhat(values, round_to=2):
     split_rhat = np.sqrt(
         (between_chain_variance / within_chain_variance + num_samples / 2 - 1) / (num_samples / 2)
     )
-
-    return round(split_rhat, round_to)
+    return _round(split_rhat, rount_to)
 
 
 def _rhat_rank_normalized(ary, round_to=2):
-    # z_scale
-    z_split = _z_scale(_split_chains(ary))
-    z_split_rhat = _rhat(z_split, None)
+    """Compute the rank normalized rhat for 2d array.
 
-    # folded z_scale
+    Computation follows https://arxiv.org/abs/1903.08008
+    """
+    rhat_bulk = _rhat(_z_scale(_split_chains(ary)), None)
+
     ary_folded = np.abs(ary - np.median(ary))
-    z_folded_split = _z_scale(_split_chains(ary_folded))
-    z_fsplit_rhat = _rhat(z_folded_split, None)
+    rhat_tail = _rhat(_z_scale(_split_chains(ary_folded)), None)
 
-    rhat = max(z_split_rhat, z_fsplit_rhat)
-    if round_to is None:
-        return rhat
-    else:
-        return np.round(rhat, round_to)
+    rhat = max(rhat_bulk, rhat_tail)
+    return _round(rhat, round_to)
 
 
 def _ess(sample_array):
@@ -585,38 +529,36 @@ def _ess(sample_array):
     shape = np.asarray(sample_array).shape
     if len(shape) != 2:
         raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
-    n_chain, n_draws = shape
+    n_chain, n_draw = shape
     if n_chain <= 1:
         raise TypeError("Effective sample size calculation requires multiple chains.")
 
     acov = np.asarray([_autocov(sample_array[chain]) for chain in range(n_chain)])
     chain_mean = sample_array.mean(axis=1)
-    chain_var = acov[:, 0] * n_draws / (n_draws - 1.0)
-    acov_t = acov[:, 1] * n_draws / (n_draws - 1.0)
-    mean_var = np.mean(chain_var)
-    var_plus = mean_var * (n_draws - 1.0) / n_draws
-    var_plus += np.var(chain_mean, ddof=1)
+    mean_var = np.mean(acov[:, 0]) * n_draw / (n_draw - 1.0)
+    var_plus = mean_var * (n_draw - 1.0) / n_draw
+    if n_chain > 1:
+        var_plus += np.var(chain_mean, ddof=1)
 
-    rho_hat_t = np.zeros(n_draws)
+    rho_hat_t = np.zeros(n_draw)
     rho_hat_even = 1.0
     rho_hat_t[0] = rho_hat_even
-    rho_hat_odd = 1.0 - (mean_var - np.mean(acov_t)) / var_plus
+    rho_hat_odd = 1.0 - (mean_var - np.mean(acov[:, 1])) / var_plus
     rho_hat_t[1] = rho_hat_odd
 
     # Geyer's initial positive sequence
-    max_t = 1
     t = 1
-    while t < (n_draws - 2) and (rho_hat_even + rho_hat_odd) >= 0.0:
+    while t < (n_draw - 2) and (rho_hat_even + rho_hat_odd) >= 0.0:
         rho_hat_even = 1.0 - (mean_var - np.mean(acov[:, t + 1])) / var_plus
         rho_hat_odd = 1.0 - (mean_var - np.mean(acov[:, t + 2])) / var_plus
         if (rho_hat_even + rho_hat_odd) >= 0:
             rho_hat_t[t + 1] = rho_hat_even
             rho_hat_t[t + 2] = rho_hat_odd
-        max_t = t + 2
         t += 2
 
+    max_t = t
     # Geyer's initial monotone sequence
-    t = 3
+    t = 1
     while t <= max_t - 2:
         if (rho_hat_t[t + 1] + rho_hat_t[t + 2]) > (rho_hat_t[t - 1] + rho_hat_t[t]):
             rho_hat_t[t + 1] = (rho_hat_t[t - 1] + rho_hat_t[t]) / 2.0
@@ -624,25 +566,55 @@ def _ess(sample_array):
         t += 2
 
     ess = (
-        int((n_chain * n_draws) / (-1.0 + 2.0 * np.sum(rho_hat_t)))
+        int((n_chain * n_draw) / (-1.0 + 2.0 * np.sum(rho_hat_t[: max_t + 1])))
         if not np.any(np.isnan(rho_hat_t))
         else np.nan
     )
     return ess
 
 
-def _bulk_ess(ary):
+def _ess_bulk(ary):
     z_split = _z_scale(_split_chains(ary))
-    bulk_ess = _ess(z_split)
-    return bulk_ess
+    ess_bulk = _ess(z_split)
+    return ess_bulk
 
 
-def _tail_ess(ary):
-    I05 = ary <= np.quantile(ary, 0.05)
+def _ess_tail(ary):
+    q05, q95 = _quantile(ary, [0.05, 0.95])
+    I05 = ary <= q05
     q05_ess = _ess(_z_scale(_split_chains(I05)))
-    I95 = ary <= np.quantile(ary, 0.95)
+    I95 = ary <= q95
     q95_ess = _ess(_z_scale(_split_chains(I95)))
     return min(q05_ess, q95_ess)
+
+
+def _ess_mean(ary):
+    return _ess(ary)
+
+
+def _ess_sd(ary):
+    return min(_ess(ary), _ess(ary ** 2))
+
+
+def ess_quantile(ary, prob):
+    q, = _quantile(ary, prob)
+    I = ary <= q
+    return _ess(_z_scale(_split_chains(I)))
+
+
+def conv_quantile(ary, prob):
+    ess = ess_quantile(ary, prob)
+    p = [0.1586553, 0.8413447, 0.05, 0.95]
+    with np.errstate(invalid="ignore"):
+        a = stats.beta.ppf(prob, ess * prob + 1, ess * (1 - prob) + 1)
+    sorted_ary = np.sort(ary.ravel())
+    size = sorted_ary.size
+    th1 = sorted_ary[_rint(np.nanmax(a[1] * S, 0))]
+    th2 = sorted_ary[_rint(np.nanmin(a[2] * S, size - 1))]
+    mcse = (th2 - th1) / 2
+    th1 = sorted_ary[_rint(np.nanmax(a[3] * S, 0))]
+    th2 = sorted_ary[_rint(np.nanmin(a[4] * S, size - 1))]
+    return mcse, th1, th2, ess
 
 
 def _mcse_mean(ary):
@@ -682,23 +654,8 @@ def _mcse_mean_sd(ary):
 
 def _mcse_quantile(ary, prob):
     """Return mcse, Q05, Q95, Seff"""
-    I = ary <= np.quantile(ary, prob)
-    size_ess = _ess(_z_scale(_split_chains(I)))
-    p = np.array([0.1586553, 0.8413447, 0.05, 0.95])
-    with np.errstate(invalid="ignore"):
-        a = stats.beta.ppf(p, size_ess * prob + 1, size_ess * (1 - prob) + 1)
-    sorted_ary = np.sort(ary.ravel())
-    size = ary.size
-    th1_idx = int(np.nanmax((round(a[0] * size), 0)))
-    th2_idx = int(np.nanmin((round(a[1] * size), size - 1)))
-    th1 = sorted_ary[th1_idx]
-    th2 = sorted_ary[th2_idx]
-    mcse = (th2 - th1) / 2
-    th1_idx = int(np.nanmax((round(a[2] * size), 0)))
-    th2_idx = int(np.nanmin((round(a[3] * size), size - 1)))
-    th1 = sorted_ary[th1_idx]
-    th2 = sorted_ary[th2_idx]
-    return mcse, th1, th2, size_ess
+    mcse, *_ = conv_quantile(ary, prob)
+    return mcse
 
 
 def _mc_error(x, batches=5, circular=False):
@@ -760,37 +717,39 @@ def _multichain_statistics(ary):
     -------
     tuple
         Order of return parameters is
-            - mcse_mean, mcse_sd, bulk_ess, tail_ess, r_hat
+            - mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, r_hat
     """
-    # Bulk ess
-    ary_split = _split_chains(ary)
-    z_split = _z_scale(ary_split)
-    bulk_ess = _ess(z_split)
+    # ess mean
+    ess_mean = _ess(ary)
 
-    # Tail ess
-    I05 = ary <= np.quantile(ary, 0.05)
+    # ess sd
+    ess_sd = _ess_sd(ary)
+
+    # ess bulk
+    z_split = _z_scale(_split_chains(ary))
+    ess_bulk = _ess(z_split)
+
+    # ess tail
+    q05, q95 = _quantile(ary, [0.05, 0.95])
+    I05 = ary <= q05
     q05_ess = _ess(_z_scale(_split_chains(I05)))
-    I95 = ary <= np.quantile(ary, 0.95)
+    I95 = ary <= q95
     q95_ess = _ess(_z_scale(_split_chains(I95)))
-    tail_ess = min(q05_ess, q95_ess)
+    ess_tail = min(q05_ess, q95_ess)
 
     # r_hat
-    z_split_rhat = _rhat(z_split, None)
+    rhat_bulk = _rhat(z_split, None)
     ary_folded = np.abs(ary - np.median(ary))
-    z_folded_split = _z_scale(_split_chains(ary_folded))
-    z_fsplit_rhat = _rhat(z_folded_split, None)
-    rhat = max(z_split_rhat, z_fsplit_rhat)
+    rhat_tail = _rhat(_z_scale(_split_chains(ary_folded)), None)
+    rhat = max(rhat_bulk, rhat_tail)
 
     # mcse_mean
-    ess = _ess(ary)
     mean = np.mean(ary)
     sd = np.std(ary, ddof=1)
-    mcse_mean = sd / np.sqrt(ess)
+    mcse_mean = sd / np.sqrt(ess_mean)
 
     # mcse_sd
-    ess2 = _ess(ary ** 2)
-    essmin = min(ess, ess2)
-    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / essmin) ** (essmin - 1) - 1)
+    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / ess_sd) ** (ess_sd - 1) - 1)
     mcse_sd = sd * fac_mcse_sd
 
-    return mcse_mean, mcse_sd, bulk_ess, tail_ess, rhat
+    return mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, rhat
