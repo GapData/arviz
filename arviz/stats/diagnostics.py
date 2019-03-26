@@ -56,7 +56,7 @@ def bfmi(data):
 
 
 def effective_sample_size_mean(data, *, var_names=None):
-    r"""Calculate estimate of the effective sample size.
+    r"""Calculate estimate of the effective sample size for mean.
 
     Parameters
     ----------
@@ -66,16 +66,16 @@ def effective_sample_size_mean(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-      Names of variables to include in the effective_sample_size report
+        Names of variables to include in the effective_sample_size_mean report
 
     Returns
     -------
-    ess : xarray.Dataset
-        Return the effective sample size, :math:`\hat{N}_{eff}`
+    xarray.Dataset
+        Return the effective sample size for mean, :math:`\hat{N}_{eff}`
 
     Notes
     -----
-    The diagnostic is computed by:
+    The basic ess diagnostic is computed by:
 
     .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
     .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
@@ -87,8 +87,16 @@ def effective_sample_size_mean(data, *, var_names=None):
     The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
     criterion (Geyer, 1992; Geyer, 2011).
 
+    Mean estimation calculates estimate for the data.
+
+    .. math:: ess_mean = ess(x)
+    .. math:: sq_ess = ess(x**2)
+    .. math:: min(ess_mean, sq_ess)
+
     References
     ----------
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
+
     https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
 
     Gelman et al. BDA (2014) Formula 11.8
@@ -105,7 +113,7 @@ def effective_sample_size_mean(data, *, var_names=None):
 
 
 def effective_sample_size_sd(data, *, var_names=None):
-    r"""Calculate estimate of the effective sample size.
+    r"""Calculate estimate of the effective sample size for sd.
 
     Parameters
     ----------
@@ -115,16 +123,16 @@ def effective_sample_size_sd(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-      Names of variables to include in the effective_sample_size report
+        Names of variables to include in the effective_sample_size_sd report
 
     Returns
     -------
-    ess : xarray.Dataset
-        Return the effective sample size, :math:`\hat{N}_{eff}`
+    xarray.Dataset
+        Return the effective sample size for sd, :math:`\hat{N}_{eff}`
 
     Notes
     -----
-    The diagnostic is computed by:
+    The basic ess diagnostic is computed by:
 
     .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
     .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
@@ -136,8 +144,17 @@ def effective_sample_size_sd(data, *, var_names=None):
     The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
     criterion (Geyer, 1992; Geyer, 2011).
 
+    sd estimation calculates estimates both for the data and squared data,
+    where ess_sd estimation is the lower one.
+
+    .. math:: ess_mean = ess(x)
+    .. math:: sq_ess = ess(x**2)
+    .. math:: min(ess_mean, sq_ess)
+
     References
     ----------
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
+
     https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
 
     Gelman et al. BDA (2014) Formula 11.8
@@ -154,7 +171,7 @@ def effective_sample_size_sd(data, *, var_names=None):
 
 
 def effective_sample_size_bulk(data, *, var_names=None):
-    r"""Calculate estimate of the bulk effective sample size.
+    r"""Calculate estimate of the effective sample size for bulk.
 
     Parameters
     ----------
@@ -164,16 +181,16 @@ def effective_sample_size_bulk(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-      Names of variables to include in the effective_sample_size report
+        Names of variables to include in the effective_sample_size_quantile report
 
     Returns
     -------
     xarray.Dataset
-        Return the bulk effective sample size, :math:`\hat{N}_{eff}`
+        Return the effective sample size for bulk, :math:`\hat{N}_{eff}`
 
     Notes
     -----
-    The diagnostic is computed by:
+    The basic ess diagnostic is computed by:
 
     .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
     .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
@@ -185,8 +202,17 @@ def effective_sample_size_bulk(data, *, var_names=None):
     The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
     criterion (Geyer, 1992; Geyer, 2011).
 
+    tail estimation follows the quantile estimation and is done by computing ess over z-transformed
+    ranked boolean vector with quantiles 5% and 95% and by selecting the minimum value.
+
+    .. math:: I05 = x <= quantile(x, 0.05)
+    .. math:: I95 = x <= quantile(x, 0.95)
+    .. math:: min(ess(I05), ess(95))
+
     References
     ----------
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
+
     https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
 
     Gelman et al. BDA (2014) Formula 11.8
@@ -203,7 +229,7 @@ def effective_sample_size_bulk(data, *, var_names=None):
 
 
 def effective_sample_size_tail(data, *, var_names=None):
-    r"""Calculate estimate of the tail effective sample size.
+    r"""Calculate estimate of the effective sample size for tail.
 
     Parameters
     ----------
@@ -213,16 +239,16 @@ def effective_sample_size_tail(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-      Names of variables to include in the effective_sample_size report
+        Names of variables to include in the effective_sample_size_quantile report
 
     Returns
     -------
     xarray.Dataset
-        Return the tail effective sample size, :math:`\hat{N}_{eff}`
+        Return the effective sample size for tail, :math:`\hat{N}_{eff}`
 
     Notes
     -----
-    The diagnostic is computed by:
+    The basic ess diagnostic is computed by:
 
     .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
     .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
@@ -234,8 +260,17 @@ def effective_sample_size_tail(data, *, var_names=None):
     The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
     criterion (Geyer, 1992; Geyer, 2011).
 
+    tail estimation follows the quantile estimation and is done by computing ess over z-transformed
+    ranked boolean vector with quantiles 5% and 95% and by selecting the minimum value.
+
+    .. math:: I05 = x <= quantile(x, 0.05)
+    .. math:: I95 = x <= quantile(x, 0.05)
+    .. math:: min(ess(z-transform(rank(I05))), ess(z-transform(rank(I95))))
+
     References
     ----------
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
+
     https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
 
     Gelman et al. BDA (2014) Formula 11.8
@@ -252,7 +287,7 @@ def effective_sample_size_tail(data, *, var_names=None):
 
 
 def effective_sample_size_quantile(data, prob, *, var_names=None):
-    r"""Calculate estimate of the tail effective sample size.
+    r"""Calculate estimate of the effective sample size for quantile on specific quantile.
 
     Parameters
     ----------
@@ -262,18 +297,18 @@ def effective_sample_size_quantile(data, prob, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     prob : float
-        quantile
+        quantile at which the ess is calculated.
     var_names : list
-      Names of variables to include in the effective_sample_size report
+        Names of variables to include in the effective_sample_size_quantile report
 
     Returns
     -------
     xarray.Dataset
-        Return the tail effective sample size, :math:`\hat{N}_{eff}`
+        Return the tail effective sample size for specific quantile, :math:`\hat{N}_{eff}`
 
     Notes
     -----
-    The diagnostic is computed by:
+    The basic ess diagnostic is computed by:
 
     .. math:: \hat{N}_{eff} = \frac{MN}{\hat{\tau}}
     .. math:: \hat{\tau} = -1 + 2 \sum_{t'=0}^K \hat{P}_t'
@@ -285,8 +320,15 @@ def effective_sample_size_quantile(data, prob, *, var_names=None):
     The current implementation is similar to Stan, which uses Geyer's initial monotone sequence
     criterion (Geyer, 1992; Geyer, 2011).
 
+    quantile estimation is done by computing ess over z-transformed and ranked boolean vector
+
+    .. math:: I = x <= quantile(x)
+    .. math:: ess(z_transform(rankdata(I)))
+
     References
     ----------
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
+
     https://mc-stan.org/docs/2_18/reference-manual/effective-sample-size-section.html Section 15.4.2
 
     Gelman et al. BDA (2014) Formula 11.8
@@ -305,7 +347,7 @@ def effective_sample_size_quantile(data, prob, *, var_names=None):
 
 
 def rhat(data, *, var_names=None):
-    r"""Compute estimate of rank normalized R-hat for a set of traces.
+    r"""Compute estimate of rank normalized splitR-hat for a set of traces.
 
     The rank normalized R-hat diagnostic tests for lack of convergence by comparing the variance between
     multiple chains to the variance within each chain. If convergence has been achieved, the
@@ -327,7 +369,7 @@ def rhat(data, *, var_names=None):
     Returns
     -------
     r_hat : xarray.Dataset
-      Returns dictionary of the potential scale reduction factors, :math:`\hat{R}`
+      Returns dataset of the potential scale reduction factors, :math:`\hat{R}`
 
     Notes
     -----
@@ -336,13 +378,16 @@ def rhat(data, *, var_names=None):
       .. math:: \hat{R} = \frac{\hat{V}}{W}
 
     where :math:`W` is the within-chain variance and :math:`\hat{V}` is the posterior variance
-    estimate for the pooled traces. This is the potential scale reduction factor, which converges
+    estimate for the pooled rank-traces. This is the potential scale reduction factor, which converges
     to unity when each of the traces is a sample from the target posterior. Values greater than one
     indicate that one or more chains have not yet converged.
 
+    Rank values are calculated over all the chains with `scipy.stats.rankdata`.
+    Each chain is split in two and normalized with the z-transform following Vehtari et al. (2019).
+
     References
     ----------
-    Vehtari et al. https://arxiv.org/abs/1903.08008 (2019)
+    Vehtari et al. (2019) see https://arxiv.org/abs/1903.08008
     Gelman et al. BDA (2014)
     Brooks and Gelman (1998)
     Gelman and Rubin (1992)
@@ -359,7 +404,7 @@ def rhat(data, *, var_names=None):
 
 
 def mcse_mean(data, *, var_names=None):
-    r""""""
+    r"""Calculate mcse mean."""
     if isinstance(data, np.ndarray):
         return _mcse_mean(data)
 
@@ -372,7 +417,7 @@ def mcse_mean(data, *, var_names=None):
 
 
 def mcse_sd(data, *, var_names=None):
-    r""""""
+    r"""Calculate mcse sd."""
     if isinstance(data, np.ndarray):
         return _mcse_sd(data)
 
@@ -385,7 +430,7 @@ def mcse_sd(data, *, var_names=None):
 
 
 def mcse_mean_sd(data, *, var_names=None):
-    r""""""
+    r"""Calculate mcse mean and sd in one go."""
     if isinstance(data, np.ndarray):
         return _mcse_mean_sd(data)
 
@@ -400,7 +445,7 @@ def mcse_mean_sd(data, *, var_names=None):
 
 
 def mcse_quantile(data, prob, *, var_names=None):
-    r""""""
+    r"""Calculate mcse for quantile."""
     if isinstance(data, np.ndarray):
         return _mcse_quantile(data, prob)
 
@@ -677,12 +722,14 @@ def _ess(sample_array):
 
 
 def _ess_bulk(ary):
+    """Compute the effective sample size for the bulk."""
     z_split = _z_scale(_split_chains(ary))
     ess_bulk = _ess(z_split)
     return ess_bulk
 
 
 def _ess_tail(ary):
+    """Compute the effective sample size for the tail."""
     q05, q95 = _quantile(ary, [0.05, 0.95])
     I05 = ary <= q05
     q05_ess = _ess(_z_scale(_split_chains(I05)))
@@ -692,14 +739,17 @@ def _ess_tail(ary):
 
 
 def _ess_mean(ary):
+    """Compute the effective sample size for the mean."""
     return _ess(ary)
 
 
 def _ess_sd(ary):
+    """Compute the effective sample size for the sd."""
     return min(_ess(ary), _ess(ary ** 2))
 
 
 def _ess_quantile(ary, prob):
+    """Compute the effective sample size for the specific resiual."""
     q, = _quantile(ary, prob)
     I = ary <= q
     return _ess(_z_scale(_split_chains(I)))
@@ -722,6 +772,7 @@ def _conv_quantile(ary, prob):
 
 
 def _mcse_mean(ary):
+    """Compute the Markov Chain mean error."""
     ess = _ess(ary)
     mean = np.mean(ary)
     sd = np.std(ary, ddof=1)
@@ -730,6 +781,7 @@ def _mcse_mean(ary):
 
 
 def _mcse_sd(ary):
+    """Compute the Markov Chain sd error."""
     ess = _ess(ary)
     sd = np.std(ary, ddof=1)
 
@@ -741,6 +793,7 @@ def _mcse_sd(ary):
 
 
 def _mcse_mean_sd(ary):
+    """Compute the Markov Chain mean and sd errors."""
     # mean
     ess = _ess(ary)
     mean = np.mean(ary)
