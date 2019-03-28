@@ -9,10 +9,56 @@ from scipy.stats.mstats import mquantiles
 __all__ = ["autocorr", "make_ufunc"]
 
 
+def autocorr(x):
+    """Compute autocorrelation using FFT for every lag for the input array.
+
+    See https://en.wikipedia.org/wiki/autocorrelation#Efficient_computation
+
+    Parameters
+    ----------
+    x : Numpy array
+        An array containing MCMC samples
+
+    Returns
+    -------
+    acorr: Numpy array same size as the input array
+    """
+    y = x - x.mean()
+    len_y = len(y)
+    with warnings.catch_warnings():
+        # silence annoying numpy tuple warning in another library
+        # silence hack added in 0.3.3+
+        warnings.simplefilter("ignore")
+        result = fftconvolve(y, y[::-1])
+    acorr = result[len(result) // 2 :]
+    acorr /= np.arange(len_y, 0, -1)
+    with np.errstate(invalid="ignore"):
+        acorr /= acorr[0]
+    return acorr
+
+
+def _autocov(x):
+    """Compute autocovariance estimates for every lag for the input array.
+
+    Parameters
+    ----------
+    x : Numpy array
+        An array containing MCMC samples
+
+    Returns
+    -------
+    acov: Numpy array same size as the input array
+    """
+    acorr = autocorr(x)
+    varx = np.var(x, ddof=0)
+    acov = acorr * varx
+    return acov
+
+
 def make_ufunc(
     func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, args=None, **kwargs
 ):  # noqa: D202
-    """Make ufunc from a function.
+    """Make ufunc from a function taking 1D array input.
 
     Parameters
     ----------
@@ -186,53 +232,8 @@ def logsumexp(ary, *, b=None, b_inv=None, axis=None, keepdims=False, out=None, c
     return out if out.shape else dtype(out)
 
 
-def autocorr(x):
-    """Compute autocorrelation using FFT for every lag for the input array.
-
-    See https://en.wikipedia.org/wiki/autocorrelation#Efficient_computation
-
-    Parameters
-    ----------
-    x : Numpy array
-        An array containing MCMC samples
-
-    Returns
-    -------
-    acorr: Numpy array same size as the input array
-    """
-    y = x - x.mean()
-    len_y = len(y)
-    with warnings.catch_warnings():
-        # silence annoying numpy tuple warning in another library
-        # silence hack added in 0.3.3+
-        warnings.simplefilter("ignore")
-        result = fftconvolve(y, y[::-1])
-    acorr = result[len(result) // 2 :]
-    acorr /= np.arange(len_y, 0, -1)
-    with np.errstate(invalid="ignore"):
-        acorr /= acorr[0]
-    return acorr
-
-
-def _autocov(x):
-    """Compute autocovariance estimates for every lag for the input array.
-
-    Parameters
-    ----------
-    x : Numpy array
-        An array containing MCMC samples
-
-    Returns
-    -------
-    acov: Numpy array same size as the input array
-    """
-    acorr = autocorr(x)
-    varx = np.var(x, ddof=0)
-    acov = acorr * varx
-    return acov
-
-
 def _rint(num):
+    """Round and change to ingeter."""
     rnum = np.rint(num)
     return int(num)
 
@@ -245,6 +246,19 @@ def _round(num, decimals):
 
 
 def _quantile(ary, q, axis=None, limit=None):
+    """Use same quantile function as R (Type 7)."""
     if limit is None:
         limit = tuple()
     return mquantiles(ary, q, alphap=1, betap=1, axis=axis, limit=limit)
+
+
+def check_valid_size(ary, msg):
+    ary = np.asarray(ary)
+    shape = ary.shape
+    if len(shape) != 2:
+        raise TypeError("{} calculation requires 2 dimensional array.".format(msg))
+    n_chain, n_draw = shape
+    if n_chain <= 1:
+        raise TypeError("{} calculation requires multiple chains.".format(msg))
+    if n_draw <= 1:
+        raise TypeError("{} calculation requires multiple draws.".format(msg))

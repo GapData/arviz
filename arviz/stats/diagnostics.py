@@ -6,21 +6,30 @@ import pandas as pd
 from scipy import stats
 import xarray as xr
 
-from .stats_utils import make_ufunc as _make_ufunc, _autocov, _rint, _round, _quantile
+from .stats_utils import (
+    make_ufunc as _make_ufunc,
+    _autocov,
+    _rint,
+    _round,
+    _quantile,
+    check_valid_size as _check_valid_size,
+)
 from ..data import convert_to_dataset
 from ..utils import _var_names
 
 
 __all__ = [
     "bfmi",
-    "effective_sample_size",
-    "bulk_effective_sample_size",
-    "tail_effective_sample_size",
+    "effective_sample_size_mean",
+    "effective_sample_size_sd",
+    "effective_sample_size_bulk",
+    "effective_sample_size_tail",
+    "effective_sample_size_quantile",
     "rhat",
-    "geweke",
     "mcse_mean",
     "mcse_sd",
     "mcse_quantile",
+    "geweke",
 ]
 
 
@@ -102,7 +111,7 @@ def effective_sample_size_mean(data, *, var_names=None):
     Gelman et al. BDA (2014) Formula 11.8
     """
     if isinstance(data, np.ndarray):
-        return _ess(data)
+        return _ess_mean(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -160,7 +169,7 @@ def effective_sample_size_sd(data, *, var_names=None):
     Gelman et al. BDA (2014) Formula 11.8
     """
     if isinstance(data, np.ndarray):
-        return _ess(data)
+        return _ess_sd(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -612,10 +621,8 @@ def _split_chains(ary):
 
 def _rhat(values, round_to=2):
     """Compute the rhat for a 2d array."""
-    shape = values.shape
-    if len(shape) != 2:
-        raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
-    _, num_samples = shape
+    _check_valid_size(values, "Rhat")
+    _, num_samples = values.shape
     # Calculate chain mean
     chain_mean = np.mean(values, axis=1)
     # Calculate chain variance
@@ -633,6 +640,7 @@ def _rhat(values, round_to=2):
 
 def _split_rhat(values, round_to=2):
     """Compute the split-rhat for a 2d array."""
+    _check_valid_size(values, "split-Rhat")
     shape = values.shape
     if len(shape) != 2:
         raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
@@ -662,6 +670,9 @@ def _rhat_rank_normalized(ary, round_to=2):
 
     Computation follows https://arxiv.org/abs/1903.08008
     """
+    ary = np.asarray(ary)
+    _check_valid_size(ary, "rank normalized split-Rhat")
+
     rhat_bulk = _rhat(_z_scale(_split_chains(ary)), None)
 
     ary_folded = np.abs(ary - np.median(ary))
@@ -674,13 +685,9 @@ def _rhat_rank_normalized(ary, round_to=2):
 def _ess(sample_array):
     """Compute the effective sample size for a 2D array."""
     sample_array = np.asarray(sample_array)
-    shape = np.asarray(sample_array).shape
-    if len(shape) != 2:
-        raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
+    shape = sample_array.shape
+    _check_valid_size(sample_array, "Effective sample size")
     n_chain, n_draw = shape
-    if n_chain <= 1:
-        raise TypeError("Effective sample size calculation requires multiple chains.")
-
     acov = np.asarray([_autocov(sample_array[chain]) for chain in range(n_chain)])
     chain_mean = sample_array.mean(axis=1)
     mean_var = np.mean(acov[:, 0]) * n_draw / (n_draw - 1.0)
@@ -723,6 +730,7 @@ def _ess(sample_array):
 
 def _ess_bulk(ary):
     """Compute the effective sample size for the bulk."""
+    _check_valid_size(ary, "Bulk effective sample size")
     z_split = _z_scale(_split_chains(ary))
     ess_bulk = _ess(z_split)
     return ess_bulk
@@ -730,6 +738,7 @@ def _ess_bulk(ary):
 
 def _ess_tail(ary):
     """Compute the effective sample size for the tail."""
+    _check_valid_size(ary, "Tail effective sample size")
     q05, q95 = _quantile(ary, [0.05, 0.95])
     I05 = ary <= q05
     q05_ess = _ess(_z_scale(_split_chains(I05)))
@@ -740,16 +749,19 @@ def _ess_tail(ary):
 
 def _ess_mean(ary):
     """Compute the effective sample size for the mean."""
+    _check_valid_size(ary, "Mean effective sample size")
     return _ess(ary)
 
 
 def _ess_sd(ary):
     """Compute the effective sample size for the sd."""
+    _check_valid_size(ary, "SD effective sample size")
     return min(_ess(ary), _ess(ary ** 2))
 
 
 def _ess_quantile(ary, prob):
     """Compute the effective sample size for the specific resiual."""
+    _check_valid_size(ary, "Quantile effective sample size")
     q, = _quantile(ary, prob)
     I = ary <= q
     return _ess(_z_scale(_split_chains(I)))
