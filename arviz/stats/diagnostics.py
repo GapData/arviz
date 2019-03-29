@@ -409,7 +409,7 @@ def rhat(data, *, var_names=None):
 
     dataset = dataset if var_names is None else dataset[var_names]
     rhat_ufunc = _make_ufunc(_rhat_rank_normalized, ravel=False)
-    return xr.apply_ufunc(_rhat_ufunc, dataset, input_core_dims=(("chain", "draw"),))
+    return xr.apply_ufunc(rhat_ufunc, dataset, input_core_dims=(("chain", "draw"),))
 
 
 def mcse_mean(data, *, var_names=None):
