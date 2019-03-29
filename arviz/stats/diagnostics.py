@@ -402,7 +402,7 @@ def rhat(data, *, var_names=None):
     Gelman and Rubin (1992)
     """
     if isinstance(data, np.ndarray):
-        return _get_split_rhat(data)
+        return _rhat_rank_normalized(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
