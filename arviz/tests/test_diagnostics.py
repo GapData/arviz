@@ -75,7 +75,7 @@ class TestDiagnostics:
         ),
     )
     def test_effective_sample_size_array(self, ess):
-        parameters = list(inspect.signature(ess).patameters.keys())
+        parameters = list(inspect.signature(ess).parameters.keys())
         if "prob" in parameters:
             ess_hat = ess(np.random.randn(4, 100), prob=0.34)
         else:
@@ -95,7 +95,7 @@ class TestDiagnostics:
     )
     def test_effective_sample_size_bad_shape(self, ess):
         with pytest.raises(TypeError):
-            parameters = list(inspect.signature(ess).patameters.keys())
+            parameters = list(inspect.signature(ess).parameters.keys())
             if "prob" in parameters:
                 ess(np.random.randn(3), prob=0.34)
             else:
@@ -113,7 +113,7 @@ class TestDiagnostics:
     )
     def test_effective_sample_size_bad_chains(self, ess):
         with pytest.raises(TypeError):
-            parameters = list(inspect.signature(ess).patameters.keys())
+            parameters = list(inspect.signature(ess).parameters.keys())
             if "prob" in parameters:
                 ess(np.random.randn(1, 3), prob=0.34)
             else:
@@ -131,7 +131,7 @@ class TestDiagnostics:
     )
     @pytest.mark.parametrize("var_names", (None, "mu", ["mu", "tau"]))
     def test_effective_sample_size_dataset(self, data, ess, var_names):
-        parameters = list(inspect.signature(ess).patameters.keys())
+        parameters = list(inspect.signature(ess).parameters.keys())
         if "prob" in parameters:
             ess_hat = ess(data, var_names=var_names, prob=0.34)
         else:
@@ -140,7 +140,7 @@ class TestDiagnostics:
 
     @pytest.mark.parametrize("mcse", (mcse_mean, mcse_sd, mcse_quantile))
     def test_mcse_array(self, mcse):
-        parameters = list(inspect.signature(mcse).patameters.keys())
+        parameters = list(inspect.signature(mcse).parameters.keys())
         if "prob" in parameters:
             mcse_hat = mcse(np.random.randn(4, 100), prob=0.34)
         else:
@@ -165,7 +165,7 @@ class TestDiagnostics:
         ess_sd_hat = effective_sample_size_sd(ary)
         ess_bulk_hat = effective_sample_size_bulk(ary)
         ess_tail_hat = effective_sample_size_tail(ary)
-        rhat_hat = _rhat_rank_normalized(ary)
+        rhat_hat = _rhat_rank_normalized(ary, round_to=None)
         (
             mcse_mean_hat_,
             mcse_sd_hat_,
@@ -181,12 +181,12 @@ class TestDiagnostics:
         assert ess_sd_hat == ess_sd_hat_
         assert ess_bulk_hat == ess_bulk_hat_
         assert ess_tail_hat == ess_tail_hat_
-        assert rhat_hat == rhat_hat_
+        assert round(rhat_hat, 3) == round(rhat_hat_, 3)
 
     @pytest.mark.parametrize("mcse", (mcse_mean, mcse_sd, mcse_quantile))
     @pytest.mark.parametrize("var_names", (None, "mu", ["mu", "tau"]))
     def test_mcse_dataset(self, data, mcse, var_names):
-        parameters = list(inspect.signature(mcse).patameters.keys())
+        parameters = list(inspect.signature(mcse).parameters.keys())
         if "prob" in parameters:
             mcse_hat = mcse(data, var_names=var_names, prob=0.34)
         else:
