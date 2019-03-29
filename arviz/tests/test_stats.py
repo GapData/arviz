@@ -8,7 +8,6 @@ from scipy.stats import linregress
 
 from ..data import load_arviz_data, from_dict
 from ..stats import compare, hpd, loo, r2_score, waic, psislw, summary
-from ..stats.diagnostic import _mc_error
 from ..stats.stats import _gpinv
 
 
@@ -143,6 +142,7 @@ def test_summary_index_origin(origin):
     assert az_summary is not None
     for i, col in enumerate(list(az_summary.index)):
         assert col == "a[{}]".format(i + origin)
+
 
 @pytest.mark.parametrize(
     "stat_funcs", [[np.var], {"var": np.var, "var2": lambda x: np.var(x) ** 2}]

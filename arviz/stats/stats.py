@@ -3,7 +3,6 @@
 import warnings
 import logging
 from collections import OrderedDict
-from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -12,7 +11,7 @@ from scipy.optimize import minimize
 import xarray as xr
 
 from ..data import convert_to_inference_data, convert_to_dataset
-from .diagnostics import _multichain_statistics, _mc_error, bfmi, effective_sample_size_mean
+from .diagnostics import _multichain_statistics, _mc_error, effective_sample_size_mean
 from .stats_utils import make_ufunc as _make_ufunc, logsumexp as _logsumexp
 from ..utils import _var_names
 

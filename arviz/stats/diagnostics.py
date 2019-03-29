@@ -358,9 +358,9 @@ def effective_sample_size_quantile(data, prob, *, var_names=None):
 def rhat(data, *, var_names=None):
     r"""Compute estimate of rank normalized splitR-hat for a set of traces.
 
-    The rank normalized R-hat diagnostic tests for lack of convergence by comparing the variance between
-    multiple chains to the variance within each chain. If convergence has been achieved, the
-    between-chain and within-chain variances should be identical. To be most effective in
+    The rank normalized R-hat diagnostic tests for lack of convergence by comparing the variance
+    between multiple chains to the variance within each chain. If convergence has been achieved,
+    the between-chain and within-chain variances should be identical. To be most effective in
     detecting evidence for nonconvergence, each chain should have been initialized to starting
     values that are dispersed relative to the target distribution.
 
@@ -387,9 +387,9 @@ def rhat(data, *, var_names=None):
       .. math:: \hat{R} = \frac{\hat{V}}{W}
 
     where :math:`W` is the within-chain variance and :math:`\hat{V}` is the posterior variance
-    estimate for the pooled rank-traces. This is the potential scale reduction factor, which converges
-    to unity when each of the traces is a sample from the target posterior. Values greater than one
-    indicate that one or more chains have not yet converged.
+    estimate for the pooled rank-traces. This is the potential scale reduction factor, which
+    converges to unity when each of the traces is a sample from the target posterior. Values
+    greater than one indicate that one or more chains have not yet converged.
 
     Rank values are calculated over all the chains with `scipy.stats.rankdata`.
     Each chain is split in two and normalized with the z-transform following Vehtari et al. (2019).
@@ -632,10 +632,10 @@ def _rhat(values, round_to=2):
     # Calculate within-chain variance
     within_chain_variance = np.mean(chain_var)
     # Estimate of marginal posterior variance
-    rhat = np.sqrt(
+    rhat_value = np.sqrt(
         (between_chain_variance / within_chain_variance + num_samples - 1) / (num_samples)
     )
-    return _round(rhat, round_to)
+    return _round(rhat_value, round_to)
 
 
 def _split_rhat(values, round_to=2):
@@ -662,7 +662,7 @@ def _split_rhat(values, round_to=2):
     split_rhat = np.sqrt(
         (between_chain_variance / within_chain_variance + num_samples / 2 - 1) / (num_samples / 2)
     )
-    return _round(split_rhat, rount_to)
+    return _round(split_rhat, round_to)
 
 
 def _rhat_rank_normalized(ary, round_to=2):
@@ -678,8 +678,8 @@ def _rhat_rank_normalized(ary, round_to=2):
     ary_folded = np.abs(ary - np.median(ary))
     rhat_tail = _rhat(_z_scale(_split_chains(ary_folded)), None)
 
-    rhat = max(rhat_bulk, rhat_tail)
-    return _round(rhat, round_to)
+    rhat_rank = max(rhat_bulk, rhat_tail)
+    return _round(rhat_rank, round_to)
 
 
 def _ess(sample_array):
@@ -772,58 +772,53 @@ def _conv_quantile(ary, prob):
     ess = _ess_quantile(ary, prob)
     p = [0.1586553, 0.8413447, 0.05, 0.95]
     with np.errstate(invalid="ignore"):
-        a = stats.beta.ppf(prob, ess * prob + 1, ess * (1 - prob) + 1)
+        a = stats.beta.ppf(p, ess * prob + 1, ess * (1 - prob) + 1)
     sorted_ary = np.sort(ary.ravel())
     size = sorted_ary.size
-    th1 = sorted_ary[_rint(np.nanmax(a[1] * S, 0))]
-    th2 = sorted_ary[_rint(np.nanmin(a[2] * S, size - 1))]
+    th1 = sorted_ary[_rint(np.nanmax(a[1] * size, 0))]
+    th2 = sorted_ary[_rint(np.nanmin(a[2] * size, size - 1))]
     mcse = (th2 - th1) / 2
-    th1 = sorted_ary[_rint(np.nanmax(a[3] * S, 0))]
-    th2 = sorted_ary[_rint(np.nanmin(a[4] * S, size - 1))]
+    th1 = sorted_ary[_rint(np.nanmax(a[3] * size, 0))]
+    th2 = sorted_ary[_rint(np.nanmin(a[4] * size, size - 1))]
     return mcse, th1, th2, ess
 
 
 def _mcse_mean(ary):
     """Compute the Markov Chain mean error."""
-    ess = _ess(ary)
-    mean = np.mean(ary)
+    ess = _ess_mean(ary)
     sd = np.std(ary, ddof=1)
-    mcse_mean = sd / np.sqrt(ess)
-    return mcse_mean
+    mcse_mean_value = sd / np.sqrt(ess)
+    return mcse_mean_value
 
 
 def _mcse_sd(ary):
     """Compute the Markov Chain sd error."""
-    ess = _ess(ary)
+    ess = _ess_sd(ary)
     sd = np.std(ary, ddof=1)
-
-    ess2 = _ess(ary ** 2)
-    essmin = min(ess, ess2)
-    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / essmin) ** (essmin - 1) - 1)
-    mcse_sd = sd * fac_mcse_sd
-    return mcse_sd
+    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / ess) ** (ess - 1) - 1)
+    mcse_sd_value = sd * fac_mcse_sd
+    return mcse_sd_value
 
 
 def _mcse_mean_sd(ary):
     """Compute the Markov Chain mean and sd errors."""
     # mean
     ess = _ess(ary)
-    mean = np.mean(ary)
     sd = np.std(ary, ddof=1)
-    mcse_mean = sd / np.sqrt(ess)
+    mcse_mean_value = sd / np.sqrt(ess)
 
     # sd
     ess2 = _ess(ary ** 2)
     essmin = min(ess, ess2)
     fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / essmin) ** (essmin - 1) - 1)
-    mcse_sd = sd * fac_mcse_sd
+    mcse_sd_value = sd * fac_mcse_sd
 
-    return mcse_mean, mcse_sd
+    return mcse_mean_value, mcse_sd_value
 
 
 def _mcse_quantile(ary, prob):
-    mcse, *_ = conv_quantile(ary, prob)
-    return mcse
+    mcse_q, *_ = _conv_quantile(ary, prob)
+    return mcse_q
 
 
 def _mc_error(x, batches=5, circular=False):
@@ -857,7 +852,7 @@ def _mc_error(x, batches=5, circular=False):
     else:
         if batches == 1:
             if circular:
-                std = st.circstd(x, high=np.pi, low=-np.pi)
+                std = stats.circstd(x, high=np.pi, low=-np.pi)
             else:
                 std = np.std(x)
             return std / np.sqrt(len(x))
@@ -865,8 +860,8 @@ def _mc_error(x, batches=5, circular=False):
         batched_traces = np.resize(x, (batches, int(len(x) / batches)))
 
         if circular:
-            means = st.circmean(batched_traces, high=np.pi, low=-np.pi, axis=1)
-            std = st.circstd(means, high=np.pi, low=-np.pi)
+            means = stats.circmean(batched_traces, high=np.pi, low=-np.pi, axis=1)
+            std = stats.circstd(means, high=np.pi, low=-np.pi)
         else:
             means = np.mean(batched_traces, 1)
             std = np.std(means)
@@ -888,14 +883,14 @@ def _multichain_statistics(ary):
             - mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, r_hat
     """
     # ess mean
-    ess_mean = _ess(ary)
+    ess_mean_value = _ess_mean(ary)
 
     # ess sd
-    ess_sd = _ess_sd(ary)
+    ess_sd_value = _ess_sd(ary)
 
     # ess bulk
     z_split = _z_scale(_split_chains(ary))
-    ess_bulk = _ess(z_split)
+    ess_bulk_value = _ess(z_split)
 
     # ess tail
     q05, q95 = _quantile(ary, [0.05, 0.95])
@@ -903,21 +898,28 @@ def _multichain_statistics(ary):
     q05_ess = _ess(_z_scale(_split_chains(I05)))
     I95 = ary <= q95
     q95_ess = _ess(_z_scale(_split_chains(I95)))
-    ess_tail = min(q05_ess, q95_ess)
+    ess_tail_value = min(q05_ess, q95_ess)
 
     # r_hat
     rhat_bulk = _rhat(z_split, None)
     ary_folded = np.abs(ary - np.median(ary))
     rhat_tail = _rhat(_z_scale(_split_chains(ary_folded)), None)
-    rhat = max(rhat_bulk, rhat_tail)
+    rhat_value = max(rhat_bulk, rhat_tail)
 
     # mcse_mean
-    mean = np.mean(ary)
     sd = np.std(ary, ddof=1)
-    mcse_mean = sd / np.sqrt(ess_mean)
+    mcse_mean_value = sd / np.sqrt(ess_mean_value)
 
     # mcse_sd
-    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / ess_sd) ** (ess_sd - 1) - 1)
-    mcse_sd = sd * fac_mcse_sd
+    fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / ess_sd_value) ** (ess_sd_value - 1) - 1)
+    mcse_sd_value = sd * fac_mcse_sd
 
-    return mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, rhat
+    return (
+        mcse_mean_value,
+        mcse_sd_value,
+        ess_mean_value,
+        ess_sd_value,
+        ess_bulk_value,
+        ess_tail_value,
+        rhat_value,
+    )

@@ -1,4 +1,5 @@
 """Stats-utility functions for ArviZ"""
+from collections.abc import Sequence
 import warnings
 
 import numpy as np
@@ -235,7 +236,7 @@ def logsumexp(ary, *, b=None, b_inv=None, axis=None, keepdims=False, out=None, c
 def _rint(num):
     """Round and change to ingeter."""
     rnum = np.rint(num)
-    return int(num)
+    return int(rnum)
 
 
 def _round(num, decimals):
