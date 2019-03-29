@@ -14,11 +14,10 @@ from ..stats import (
     effective_sample_size_quantile,
     mcse_mean,
     mcse_sd,
-    mcse_mean_sd,
     mcse_quantile,
     geweke,
 )
-from ..stats.diagnostics import ks_summary, _multichain_statistics
+from ..stats.diagnostics import mcse_mean_sd, ks_summary, _multichain_statistics
 
 # For tests only, recommended value should be closer to 1.01
 GOOD_RHAT = 1.1
