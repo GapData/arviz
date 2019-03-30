@@ -795,11 +795,11 @@ def _conv_quantile(ary, prob):
         a = stats.beta.ppf(p, ess * prob + 1, ess * (1 - prob) + 1)
     sorted_ary = np.sort(ary.ravel())
     size = sorted_ary.size
-    th1 = sorted_ary[_rint(np.nanmax(a[1] * size, 0))]
-    th2 = sorted_ary[_rint(np.nanmin(a[2] * size, size - 1))]
+    th1 = sorted_ary[_rint(np.nanmax((a[1] * size, 0)))]
+    th2 = sorted_ary[_rint(np.nanmin((a[2] * size, size - 1)))]
     mcse = (th2 - th1) / 2
-    th1 = sorted_ary[_rint(np.nanmax(a[3] * size, 0))]
-    th2 = sorted_ary[_rint(np.nanmin(a[4] * size, size - 1))]
+    th1 = sorted_ary[_rint(np.nanmax((a[3] * size, 0)))]
+    th2 = sorted_ary[_rint(np.nanmin((a[4] * size, size - 1)))]
     return mcse, th1, th2, ess
 
 
@@ -913,15 +913,7 @@ def _multichain_statistics(ary):
             - mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, r_hat
     """
     if _check_nan(ary):
-        return (
-            np.nan,
-            np.nan,
-            np.nan,
-            np.nan,
-            np.nan,
-            np.nan,
-            np.nan,
-        )
+        return (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
     # ess mean
     ess_mean_value = _ess_mean(ary)
 

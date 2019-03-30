@@ -56,8 +56,7 @@ def _autocov(ary):
     return acov
 
 
-def make_ufunc(
-    func, n_dims=2, n_output=1, index=Ellipsis, ravel=True):  # noqa: D202
+def make_ufunc(func, n_dims=2, n_output=1, index=Ellipsis, ravel=True):  # noqa: D202
     """Make ufunc from a function taking 1D array input.
 
     Parameters
@@ -139,7 +138,7 @@ def update_docstring(ufunc, func, n_output=1):
         module += func.__module__
     if hasattr(func, "__name__"):
         name += func.__name__
-    if hasattr(func, "__doc__"):
+    if hasattr(func, "__doc__") and isinstance(func.__doc__, str):
         docstring += func.__doc__
     ufunc.__doc__ += "\n\n"
     if module or name:

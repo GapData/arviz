@@ -727,7 +727,10 @@ def summary(
         )
 
         circ_mcse = xr.apply_ufunc(
-            _make_ufunc(_mc_error), posterior, circular=True, input_core_dims=(("chain", "draw"),)
+            _make_ufunc(_mc_error),
+            posterior,
+            kwargs=dict(circular=True),
+            input_core_dims=(("chain", "draw"),),
         )
 
         circ_hpd_lower, circ_hpd_higher = xr.apply_ufunc(
@@ -803,7 +806,7 @@ def summary(
             )
         )
     metrics.extend(extra_metrics)
-    metrics.extend(extra_metric_names)
+    metric_names.extend(extra_metric_names)
     joined = xr.concat(metrics, dim="metric").assign_coords(metric=metric_names)
 
     if fmt.lower() == "wide":
