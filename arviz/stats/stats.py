@@ -526,29 +526,28 @@ def _gpdfit(ary):
 
 def _gpinv(probs, kappa, sigma):
     """Inverse Generalized Pareto distribution function."""
+    # pylint: disable=unsupported-assignment-operation, invalid-unary-operand-type
     x = np.full_like(probs, np.nan)
     if sigma <= 0:
         return x
     ok = (probs > 0) & (probs < 1)
     if np.all(ok):
         if np.abs(kappa) < np.finfo(float).eps:
-            x = -np.log1p(-probs)  # pylint: disable=invalid-unary-operand-type
+            x = -np.log1p(-probs)
         else:
             x = np.expm1(-kappa * np.log1p(-probs)) / kappa
         x *= sigma
     else:
         if np.abs(kappa) < np.finfo(float).eps:
-            x[ok] = -np.log1p(-probs[ok])  # pylint: disable=unsupported-assignment-operation, E1130
+            x[ok] = -np.log1p(-probs[ok])
         else:
-            # pylint: disable=unsupported-assignment-operation
             x[ok] = np.expm1(-kappa * np.log1p(-probs[ok])) / kappa
         x *= sigma
         x[probs == 0] = 0
         if kappa >= 0:
-            x[probs == 1] = np.inf  # pylint: disable=unsupported-assignment-operation
+            x[probs == 1] = np.inf
         else:
-            x[probs == 1] = -sigma / kappa  # pylint: disable=unsupported-assignment-operation
-
+            x[probs == 1] = -sigma / kappa
     return x
 
 
