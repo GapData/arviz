@@ -57,8 +57,7 @@ def _autocov(x):
 
 
 def make_ufunc(
-    func, n_dims=2, n_output=1, index=Ellipsis, ravel=True, args=None, **kwargs
-):  # noqa: D202
+    func, n_dims=2, n_output=1, index=Ellipsis, ravel=True):  # noqa: D202
     """Make ufunc from a function taking 1D array input.
 
     Parameters
@@ -74,10 +73,6 @@ def make_ufunc(
         Slice ndarray with `index`. Defaults to `Ellipsis`.
     ravel : bool, optional
         If true, ravel the ndarray before calling `func`.
-    args : tuple, optional
-        Arguments for `func`.
-    **kwargs
-        Other parameters are inserted to `func`.
 
     Returns
     -------
@@ -92,7 +87,7 @@ def make_ufunc(
     if not isinstance(args, tuple):
         raise TypeError("`args` needs to be tuple.")
 
-    def _ufunc(ary, out=None):
+    def _ufunc(ary, *args, out=None, **kwargs):
         """General ufunc for single-output function."""
         if out is None:
             out = np.empty(ary.shape[:-n_dims])
@@ -106,7 +101,7 @@ def make_ufunc(
             out[idx] = np.asarray(func(ary_idx, *args, **kwargs))[index]
         return out
 
-    def _multi_ufunc(ary, out=None):
+    def _multi_ufunc(ary, *args, out=None, **kwargs):
         """General ufunc for multi-output function."""
         element_shape = ary.shape[:-n_dims]
         if out is None:
