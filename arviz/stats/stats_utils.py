@@ -1,4 +1,4 @@
-"""Stats-utility functions for ArviZ"""
+"""Stats-utility functions for ArviZ."""
 from collections.abc import Sequence
 import warnings
 
@@ -254,6 +254,7 @@ def check_nan(ary, axis=None, how="any"):
 
 
 def check_valid_size(ary, msg):
+    """Validate 2D array shape."""
     ary = np.asarray(ary)
     shape = ary.shape
     if len(shape) != 2:
