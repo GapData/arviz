@@ -13,6 +13,7 @@ from .stats_utils import (
     _round,
     _quantile,
     check_valid_size as _check_valid_size,
+    check_nan as _check_nan,
 )
 from ..data import convert_to_dataset
 from ..utils import _var_names
@@ -468,7 +469,7 @@ def mcse_quantile(data, prob, *, var_names=None):
     )
 
 
-def geweke(values, first=0.1, last=0.5, intervals=20):
+def geweke(ary, first=0.1, last=0.5, intervals=20):
     r"""Compute z-scores for convergence diagnostics.
 
     Compare the mean of the first % of series with the mean of the last % of series. x is divided
@@ -477,7 +478,7 @@ def geweke(values, first=0.1, last=0.5, intervals=20):
 
     Parameters
     ----------
-    values : 1D array-like
+    ary : 1D array-like
       The trace of some stochastic parameter.
     first : float
       The fraction of series at the beginning of the trace.
@@ -518,7 +519,7 @@ def geweke(values, first=0.1, last=0.5, intervals=20):
     zscores = []
 
     # Last index value
-    end = len(values) - 1
+    end = len(ary) - 1
 
     # Start intervals going up to the <last>% of the chain
     last_start_idx = (1 - last) * end
@@ -529,8 +530,8 @@ def geweke(values, first=0.1, last=0.5, intervals=20):
     # Loop over start indices
     for start in start_indices:
         # Calculate slices
-        first_slice = values[start : start + int(first * (end - start))]
-        last_slice = values[int(end - last * (end - start)) :]
+        first_slice = ary[start : start + int(first * (end - start))]
+        last_slice = ary[int(end - last * (end - start)) :]
 
         z_score = first_slice.mean() - last_slice.mean()
         z_score /= np.sqrt(first_slice.var() + last_slice.var())
@@ -619,14 +620,16 @@ def _split_chains(ary):
     return np.vstack((ary[:, :half], ary[:, -half:]))
 
 
-def _rhat(values, round_to=2):
+def _rhat(ary, round_to=2):
     """Compute the rhat for a 2d array."""
-    _check_valid_size(values, "Rhat")
-    _, num_samples = values.shape
+    _check_valid_size(ary, "Rhat")
+    if _check_nan(ary):
+        return np.nan
+    _, num_samples = ary.shape
     # Calculate chain mean
-    chain_mean = np.mean(values, axis=1)
+    chain_mean = np.mean(ary, axis=1)
     # Calculate chain variance
-    chain_var = np.var(values, axis=1, ddof=1)
+    chain_var = np.var(ary, axis=1, ddof=1)
     # Calculate between-chain variance
     between_chain_variance = num_samples / 2 * np.var(chain_mean, ddof=1)
     # Calculate within-chain variance
@@ -638,21 +641,23 @@ def _rhat(values, round_to=2):
     return _round(rhat_value, round_to)
 
 
-def _split_rhat(values, round_to=2):
+def _split_rhat(ary, round_to=2):
     """Compute the split-rhat for a 2d array."""
-    _check_valid_size(values, "split-Rhat")
-    shape = values.shape
+    _check_valid_size(ary, "split-Rhat")
+    shape = ary.shape
     if len(shape) != 2:
         raise TypeError("Effective sample size calculation requires 2 dimensional arrays.")
+    if _check_nan(ary):
+        return np.nan
     _, num_samples = shape
     num_split = num_samples // 2
     # Calculate split chain mean
-    split_chain_mean1 = np.mean(values[:, :num_split], axis=1)
-    split_chain_mean2 = np.mean(values[:, num_split:], axis=1)
+    split_chain_mean1 = np.mean(ary[:, :num_split], axis=1)
+    split_chain_mean2 = np.mean(ary[:, num_split:], axis=1)
     split_chain_mean = np.concatenate((split_chain_mean1, split_chain_mean2))
     # Calculate split chain variance
-    split_chain_var1 = np.var(values[:, :num_split], axis=1, ddof=1)
-    split_chain_var2 = np.var(values[:, num_split:], axis=1, ddof=1)
+    split_chain_var1 = np.var(ary[:, :num_split], axis=1, ddof=1)
+    split_chain_var2 = np.var(ary[:, num_split:], axis=1, ddof=1)
     split_chain_var = np.concatenate((split_chain_var1, split_chain_var2))
     # Calculate between-chain variance
     between_chain_variance = num_samples / 2 * np.var(split_chain_mean, ddof=1)
@@ -672,7 +677,8 @@ def _rhat_rank_normalized(ary, round_to=2):
     """
     ary = np.asarray(ary)
     _check_valid_size(ary, "rank normalized split-Rhat")
-
+    if _check_nan(ary):
+        return np.nan
     rhat_bulk = _rhat(_z_scale(_split_chains(ary)), None)
 
     ary_folded = np.abs(ary - np.median(ary))
@@ -682,14 +688,16 @@ def _rhat_rank_normalized(ary, round_to=2):
     return _round(rhat_rank, round_to)
 
 
-def _ess(sample_array):
+def _ess(ary):
     """Compute the effective sample size for a 2D array."""
-    sample_array = np.asarray(sample_array)
-    shape = sample_array.shape
-    _check_valid_size(sample_array, "Effective sample size")
+    ary = np.asarray(ary)
+    shape = ary.shape
+    _check_valid_size(ary, "Effective sample size")
+    if _check_nan(ary):
+        return np.nan
     n_chain, n_draw = shape
-    acov = np.asarray([_autocov(sample_array[chain]) for chain in range(n_chain)])
-    chain_mean = sample_array.mean(axis=1)
+    acov = np.asarray([_autocov(ary[chain]) for chain in range(n_chain)])
+    chain_mean = ary.mean(axis=1)
     mean_var = np.mean(acov[:, 0]) * n_draw / (n_draw - 1.0)
     var_plus = mean_var * (n_draw - 1.0) / n_draw
     if n_chain > 1:
@@ -731,6 +739,8 @@ def _ess(sample_array):
 def _ess_bulk(ary):
     """Compute the effective sample size for the bulk."""
     _check_valid_size(ary, "Bulk effective sample size")
+    if _check_nan(ary):
+        return np.nan
     z_split = _z_scale(_split_chains(ary))
     ess_bulk = _ess(z_split)
     return ess_bulk
@@ -739,6 +749,8 @@ def _ess_bulk(ary):
 def _ess_tail(ary):
     """Compute the effective sample size for the tail."""
     _check_valid_size(ary, "Tail effective sample size")
+    if _check_nan(ary):
+        return np.nan
     q05, q95 = _quantile(ary, [0.05, 0.95])
     I05 = ary <= q05
     q05_ess = _ess(_z_scale(_split_chains(I05)))
@@ -750,18 +762,24 @@ def _ess_tail(ary):
 def _ess_mean(ary):
     """Compute the effective sample size for the mean."""
     _check_valid_size(ary, "Mean effective sample size")
+    if _check_nan(ary):
+        return np.nan
     return _ess(ary)
 
 
 def _ess_sd(ary):
     """Compute the effective sample size for the sd."""
     _check_valid_size(ary, "SD effective sample size")
+    if _check_nan(ary):
+        return np.nan
     return min(_ess(ary), _ess(ary ** 2))
 
 
 def _ess_quantile(ary, prob):
     """Compute the effective sample size for the specific resiual."""
     _check_valid_size(ary, "Quantile effective sample size")
+    if _check_nan(ary):
+        return np.nan
     q, = _quantile(ary, prob)
     I = ary <= q
     return _ess(_z_scale(_split_chains(I)))
@@ -769,6 +787,8 @@ def _ess_quantile(ary, prob):
 
 def _conv_quantile(ary, prob):
     """Return mcse, Q05, Q95, Seff"""
+    if _check_nan(ary):
+        return np.nan, np.nan, np.nan, np.nan
     ess = _ess_quantile(ary, prob)
     p = [0.1586553, 0.8413447, 0.05, 0.95]
     with np.errstate(invalid="ignore"):
@@ -785,6 +805,8 @@ def _conv_quantile(ary, prob):
 
 def _mcse_mean(ary):
     """Compute the Markov Chain mean error."""
+    if _check_nan(ary):
+        return np.nan
     ess = _ess_mean(ary)
     sd = np.std(ary, ddof=1)
     mcse_mean_value = sd / np.sqrt(ess)
@@ -793,6 +815,8 @@ def _mcse_mean(ary):
 
 def _mcse_sd(ary):
     """Compute the Markov Chain sd error."""
+    if _check_nan(ary):
+        return np.nan
     ess = _ess_sd(ary)
     sd = np.std(ary, ddof=1)
     fac_mcse_sd = np.sqrt(np.exp(1) * (1 - 1 / ess) ** (ess - 1) - 1)
@@ -802,6 +826,8 @@ def _mcse_sd(ary):
 
 def _mcse_mean_sd(ary):
     """Compute the Markov Chain mean and sd errors."""
+    if _check_nan(ary):
+        return np.nan
     # mean
     ess = _ess(ary)
     sd = np.std(ary, ddof=1)
@@ -817,11 +843,13 @@ def _mcse_mean_sd(ary):
 
 
 def _mcse_quantile(ary, prob):
+    if _check_nan(ary):
+        return np.nan
     mcse_q, *_ = _conv_quantile(ary, prob)
     return mcse_q
 
 
-def _mc_error(x, batches=5, circular=False):
+def _mc_error(ary, batches=5, circular=False):
     """Calculate the simulation standard error, accounting for non-independent samples.
 
     The trace is divided into batches, and the standard deviation of the batch
@@ -829,12 +857,12 @@ def _mc_error(x, batches=5, circular=False):
 
     Parameters
     ----------
-    x : Numpy array
+    ary : Numpy array
         An array containing MCMC samples
     batches : integer
         Number of batches
     circular : bool
-        Whether to compute the error taking into account `x` is a circular variable
+        Whether to compute the error taking into account `ary` is a circular variable
         (in the range [-np.pi, np.pi]) or not. Defaults to False (i.e non-circular variables).
 
     Returns
@@ -842,22 +870,24 @@ def _mc_error(x, batches=5, circular=False):
     mc_error : float
         Simulation standard error
     """
-    if x.ndim > 1:
+    if ary.ndim > 1:
 
-        dims = np.shape(x)
-        trace = np.transpose([t.ravel() for t in x])
+        dims = np.shape(ary)
+        trace = np.transpose([t.ravel() for t in ary])
 
         return np.reshape([_mc_error(t, batches) for t in trace], dims[1:])
 
     else:
+        if _check_nan(ary):
+            return np.nan
         if batches == 1:
             if circular:
-                std = stats.circstd(x, high=np.pi, low=-np.pi)
+                std = stats.circstd(ary, high=np.pi, low=-np.pi)
             else:
-                std = np.std(x)
-            return std / np.sqrt(len(x))
+                std = np.std(ary)
+            return std / np.sqrt(len(ary))
 
-        batched_traces = np.resize(x, (batches, int(len(x) / batches)))
+        batched_traces = np.resize(ary, (batches, int(len(ary) / batches)))
 
         if circular:
             means = stats.circmean(batched_traces, high=np.pi, low=-np.pi, axis=1)
@@ -882,6 +912,16 @@ def _multichain_statistics(ary):
         Order of return parameters is
             - mcse_mean, mcse_sd, ess_mean, ess_sd, ess_bulk, ess_tail, r_hat
     """
+    if _check_nan(ary):
+        return (
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+        )
     # ess mean
     ess_mean_value = _ess_mean(ary)
 

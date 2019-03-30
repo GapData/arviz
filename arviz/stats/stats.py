@@ -237,7 +237,7 @@ def _ic_matrix(ics, ic_i):
     return rows, cols, ic_i_val
 
 
-def hpd(x, credible_interval=0.94, circular=False):
+def hpd(ary, credible_interval=0.94, circular=False):
     """
     Calculate highest posterior density (HPD) of array for given credible_interval.
 
@@ -259,24 +259,24 @@ def hpd(x, credible_interval=0.94, circular=False):
     np.ndarray
         lower and upper value of the interval.
     """
-    if x.ndim > 1:
+    if ary.ndim > 1:
         hpd_array = np.array(
-            [hpd(row, credible_interval=credible_interval, circular=circular) for row in x.T]
+            [hpd(row, credible_interval=credible_interval, circular=circular) for row in ary.T]
         )
         return hpd_array
     # Make a copy of trace
-    x = x.copy()
-    len_x = len(x)
+    ary = ary.copy()
+    n = len(ary)
 
     if circular:
-        mean = st.circmean(x, high=np.pi, low=-np.pi)
-        x = x - mean
-        x = np.arctan2(np.sin(x), np.cos(x))
+        mean = st.circmean(ary, high=np.pi, low=-np.pi)
+        ary = ary - mean
+        ary = np.arctan2(np.sin(ary), np.cos(ary))
 
-    x = np.sort(x)
-    interval_idx_inc = int(np.floor(credible_interval * len_x))
-    n_intervals = len_x - interval_idx_inc
-    interval_width = x[interval_idx_inc:] - x[:n_intervals]
+    ary = np.sort(ary)
+    interval_idx_inc = int(np.floor(credible_interval * n))
+    n_intervals = n - interval_idx_inc
+    interval_width = ary[interval_idx_inc:] - ary[:n_intervals]
 
     if len(interval_width) == 0:
         raise ValueError(
@@ -285,8 +285,8 @@ def hpd(x, credible_interval=0.94, circular=False):
         )
 
     min_idx = np.argmin(interval_width)
-    hdi_min = x[min_idx]
-    hdi_max = x[min_idx + interval_idx_inc]
+    hdi_min = ary[min_idx]
+    hdi_max = ary[min_idx + interval_idx_inc]
 
     if circular:
         hdi_min = hdi_min + mean
@@ -474,7 +474,7 @@ def psislw(log_weights, reff=1.0):
     return log_weights_out, kss
 
 
-def _gpdfit(x):
+def _gpdfit(ary):
     """Estimate the parameters for the Generalized Pareto Distribution (GPD).
 
     Empirical Bayes estimate for the parameters of the generalized Pareto
@@ -482,7 +482,7 @@ def _gpdfit(x):
 
     Parameters
     ----------
-    x : array
+    ary : array
         sorted 1D data array
 
     Returns
@@ -494,15 +494,15 @@ def _gpdfit(x):
     """
     prior_bs = 3
     prior_k = 10
-    len_x = len(x)
-    m_est = 30 + int(len_x ** 0.5)
+    n = len(ary)
+    m_est = 30 + int(n ** 0.5)
 
     b_ary = 1 - np.sqrt(m_est / (np.arange(1, m_est + 1, dtype=float) - 0.5))
-    b_ary /= prior_bs * x[int(len_x / 4 + 0.5) - 1]
-    b_ary += 1 / x[-1]
+    b_ary /= prior_bs * ary[int(n / 4 + 0.5) - 1]
+    b_ary += 1 / ary[-1]
 
-    k_ary = np.log1p(-b_ary[:, None] * x).mean(axis=1)  # pylint: disable=no-member
-    len_scale = len_x * (np.log(-(b_ary / k_ary)) - k_ary - 1)
+    k_ary = np.log1p(-b_ary[:, None] * ary).mean(axis=1)  # pylint: disable=no-member
+    len_scale = n * (np.log(-(b_ary / k_ary)) - k_ary - 1)
     weights = 1 / np.exp(len_scale - len_scale[:, None]).sum(axis=1)
 
     # remove negligible weights
@@ -516,9 +516,9 @@ def _gpdfit(x):
     # posterior mean for b
     b_post = np.sum(b_ary * weights)
     # estimate for k
-    k_post = np.log1p(-b_post * x).mean()  # pylint: disable=invalid-unary-operand-type,no-member
+    k_post = np.log1p(-b_post * ary).mean()  # pylint: disable=invalid-unary-operand-type,no-member
     # add prior for k_post
-    k_post = (len_x * k_post + prior_k * 0.5) / (len_x + prior_k)
+    k_post = (n * k_post + prior_k * 0.5) / (n + prior_k)
     sigma = -k_post / b_post
 
     return k_post, sigma
@@ -704,32 +704,36 @@ def summary(
         sd = posterior.std(dim=("chain", "draw"))
 
         hpd_lower, hpd_higher = xr.apply_ufunc(
-            _make_ufunc(hpd, n_output=2, credible_interval=credible_interval),
+            _make_ufunc(hpd, n_output=2),
             posterior,
+            kwargs=dict(credible_interval=credible_interval),
             input_core_dims=(("chain", "draw"),),
             output_core_dims=tuple([] for _ in range(2)),
         )
 
     if include_circ:
         circ_mean = xr.apply_ufunc(
-            _make_ufunc(st.circmean, high=np.pi, low=-np.pi),
+            _make_ufunc(st.circmean),
             posterior,
+            kwargs=dict(high=np.pi, low=-np.pi),
             input_core_dims=(("chain", "draw"),),
         )
 
         circ_sd = xr.apply_ufunc(
-            _make_ufunc(st.circstd, high=np.pi, low=-np.pi),
+            _make_ufunc(st.circstd),
             posterior,
+            kwargs=dict(high=np.pi, low=-np.pi),
             input_core_dims=(("chain", "draw"),),
         )
 
         circ_mcse = xr.apply_ufunc(
-            _make_ufunc(_mc_error, circular=True), posterior, input_core_dims=(("chain", "draw"),)
+            _make_ufunc(_mc_error), posterior, circular=True, input_core_dims=(("chain", "draw"),)
         )
 
         circ_hpd_lower, circ_hpd_higher = xr.apply_ufunc(
-            _make_ufunc(hpd, n_output=2, credible_interval=credible_interval, circular=True),
+            _make_ufunc(hpd, n_output=2),
             posterior,
+            kwargs=dict(credible_interval=credible_interval, circular=True),
             input_core_dims=(("chain", "draw"),),
             output_core_dims=tuple([] for _ in range(2)),
         )
