@@ -597,7 +597,7 @@ def _bfmi(energy):
 
 
 def _z_scale(ary):
-    """Calculate z_scale
+    """Calculate z_scale.
 
     Parameters
     ----------
@@ -615,6 +615,7 @@ def _z_scale(ary):
 
 
 def _split_chains(ary):
+    """Split and stack chains."""
     _, n_draw = ary.shape
     half = n_draw // 2
     return np.vstack((ary[:, :half], ary[:, -half:]))
@@ -786,7 +787,7 @@ def _ess_quantile(ary, prob):
 
 
 def _conv_quantile(ary, prob):
-    """Return mcse, Q05, Q95, Seff"""
+    """Return mcse, Q05, Q95, Seff."""
     if _check_nan(ary):
         return np.nan, np.nan, np.nan, np.nan
     ess = _ess_quantile(ary, prob)
@@ -795,11 +796,11 @@ def _conv_quantile(ary, prob):
         a = stats.beta.ppf(p, ess * prob + 1, ess * (1 - prob) + 1)
     sorted_ary = np.sort(ary.ravel())
     size = sorted_ary.size
-    th1 = sorted_ary[_rint(np.nanmax((a[1] * size, 0)))]
-    th2 = sorted_ary[_rint(np.nanmin((a[2] * size, size - 1)))]
+    th1 = sorted_ary[_rint(np.nanmax((a[0] * size, 0)))]
+    th2 = sorted_ary[_rint(np.nanmin((a[1] * size, size - 1)))]
     mcse = (th2 - th1) / 2
-    th1 = sorted_ary[_rint(np.nanmax((a[3] * size, 0)))]
-    th2 = sorted_ary[_rint(np.nanmin((a[4] * size, size - 1)))]
+    th1 = sorted_ary[_rint(np.nanmax((a[2] * size, 0)))]
+    th2 = sorted_ary[_rint(np.nanmin((a[3] * size, size - 1)))]
     return mcse, th1, th2, ess
 
 
@@ -843,6 +844,7 @@ def _mcse_mean_sd(ary):
 
 
 def _mcse_quantile(ary, prob):
+    """Compute the Markov Chain quantile error at quantile=prob."""
     if _check_nan(ary):
         return np.nan
     mcse_q, *_ = _conv_quantile(ary, prob)
