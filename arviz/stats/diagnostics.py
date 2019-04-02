@@ -650,7 +650,7 @@ def _rhat(ary, round_to=2, split=False):
 
 def rhat_split_(ary, round_to=2):
     """Compute the split-rhat for a 2d array."""
-    return _rhat(ary, round=round_to, split=True)
+    return _rhat(ary, round_to=round_to, split=True)
 
 
 def _rhat_rank_normalized(ary, round_to=2):
@@ -674,6 +674,7 @@ def _rhat_rank_normalized(ary, round_to=2):
 def _rhat_split_folded(ary):
     ary = _z_split_fold(ary)
     return _rhat(ary)
+
 
 def _ess(ary, split=False):
     """Compute the effective sample size for a 2D array."""
@@ -778,8 +779,9 @@ def _ess_quantile(ary, prob):
     return _ess(_z_scale(_split_chains(I)))
 
 
-def _ess_split_(ary):
+def _ess_split(ary):
     return _ess(ary, split=True)
+
 
 def _ess_z_scale(ary, split=False):
     return _ess(_z_scale(ary), split=split)
@@ -789,12 +791,14 @@ def _ess_split_folded(ary):
     ary = _z_split_fold(ary)
     return _ess(ary)
 
+
 def _ess_split_median(ary):
     ary = np.asarray(ary)
     ary = ary - np.median(ary)
     ary = (ary <= 0).astype(float)
     ary = _z_scale(_split_chains(ary))
     return _ess(ary)
+
 
 def _ess_split_mad(ary):
     ary = np.asarray(ary)
@@ -871,7 +875,7 @@ def _mcse_quantile(ary, prob):
     ary = np.asarray(ary)
     if _check_nan(ary):
         return np.nan
-    mcse_q, *_ = _conv_quantile(ary, prob, split=split)
+    mcse_q, *_ = _conv_quantile(ary, prob)
     return mcse_q
 
 
@@ -882,12 +886,14 @@ def _ress_mean(ary, ess=None, split=False):
         ess = _ess_mean(ary, split=split)
     return ess / ary.size
 
+
 def _ress_sd(ary, ess=None, split=False):
     """Relative sd effective sample size"""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_sd(ary, split=split)
     return ess / ary.size
+
 
 def _ress_bulk(ary, ess=None):
     """Relative bulk effective sample size"""
@@ -896,12 +902,14 @@ def _ress_bulk(ary, ess=None):
         ess = _ess_bulk(ary)
     return ess / ary.size
 
+
 def _ress_tail(ary, ess=None):
     """Relative tail effective sample size"""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_tail(ary)
     return ess / ary.size
+
 
 def _ress_quantile(ary, prob=None, ess=None):
     """Relative quantile effective sample size"""
@@ -912,41 +920,49 @@ def _ress_quantile(ary, prob=None, ess=None):
         ess = _ess_quantile(ary, prob=prob)
     return ess / ary.size
 
+
 def _ress_split_(ary, ess=None):
     ary = np.asarray(ary)
     if ess is None:
-        ess = _split_ess(ary)
+        ess = _ess_split(ary)
     return ess / ary.size
+
 
 def _ress_z_scale(ary, ess=None, split=False):
     if ess is None:
         ess = _ess_z_scale(ary, split=split)
     return ess / ary.size
 
+
 def _rhat_z_scale(ary, split=False):
     return _rhat(_z_scale(ary), split=split)
+
 
 def _z_split_fold(ary):
     ary = np.asarray(ary)
     ary = ary - np.median(ary)
     ary = np.abs(ary)
-    ary = _z_scale(split_chains(ary))
+    ary = _z_scale(_split_chains(ary))
     return ary
+
 
 def _ress_split_folded(ary, ess=None):
     if ess is None:
-        ess = ess_split_folded(ary)
+        ess = _ess_split_folded(ary)
     return ess / ary.size
+
 
 def _ress_split_median(ary, ess=None):
     if ess is None:
         ess = _ess_split_median(ary)
     return ess / ary.size
 
+
 def _ress_split_mad(ary, ess=None):
     if ess is None:
         ess = _ess_split_mad(ary)
     return ess / ary.size
+
 
 def _mc_error(ary, batches=5, circular=False):
     """Calculate the simulation standard error, accounting for non-independent samples.
