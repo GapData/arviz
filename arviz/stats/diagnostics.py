@@ -372,10 +372,10 @@ def effective_sample_size_quantile(data, prob, *, var_names=None):
     )
 
 
-def effective_sample_size_z_scale(data, prob, *, var_names=None):
+def effective_sample_size_z_scale(data, *, var_names=None):
     r"""Calculate estimate of the effective sample size for z-scale."""
     if isinstance(data, np.ndarray):
-        return _ess_z_scale(data, prob)
+        return _ess_z_scale(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -383,14 +383,14 @@ def effective_sample_size_z_scale(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ess_z_scale_ufunc = _make_ufunc(_ess_z_scale, ravel=False)
     return xr.apply_ufunc(
-        ess_z_scale_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ess_z_scale_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def effective_sample_size_split_median(data, prob, *, var_names=None):
+def effective_sample_size_split_median(data, *, var_names=None):
     r"""Calculate estimate of the median split effective sample size."""
     if isinstance(data, np.ndarray):
-        return _ess_split_median(data, prob)
+        return _ess_split_median(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -400,15 +400,14 @@ def effective_sample_size_split_median(data, prob, *, var_names=None):
     return xr.apply_ufunc(
         ess_split_median_ufunc,
         dataset,
-        prob,
         input_core_dims=(("chain", "draw"), ("chain", "draw")),
     )
 
 
-def effective_sample_size_split_folded(data, prob, *, var_names=None):
+def effective_sample_size_split_folded(data, *, var_names=None):
     r"""Calculate estimate of the split folded effective sample size."""
     if isinstance(data, np.ndarray):
-        return _ess_split_folded(data, prob)
+        return _ess_split_folded(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -416,14 +415,14 @@ def effective_sample_size_split_folded(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ess_split_mad_ufunc = _make_ufunc(_ess_split_folded, ravel=False)
     return xr.apply_ufunc(
-        ess_split_mad_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ess_split_mad_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def effective_sample_size_split_mad(data, prob, *, var_names=None):
+def effective_sample_size_split_mad(data, *, var_names=None):
     r"""Calculate estimate of the split effective sample size for mean absolute deviance."""
     if isinstance(data, np.ndarray):
-        return _ess_split_mad(data, prob)
+        return _ess_split_mad(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -431,14 +430,14 @@ def effective_sample_size_split_mad(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ess_split_mad_ufunc = _make_ufunc(_ess_split_mad, ravel=False)
     return xr.apply_ufunc(
-        ess_split_mad_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ess_split_mad_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def effective_sample_size_split(data, prob, *, var_names=None):
+def effective_sample_size_split(data, *, var_names=None):
     r"""Calculate estimate of the split effective sample size."""
     if isinstance(data, np.ndarray):
-        return _ess_split(data, prob)
+        return _ess_split(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -446,14 +445,14 @@ def effective_sample_size_split(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ess_split_ufunc = _make_ufunc(_ess_split, ravel=False)
     return xr.apply_ufunc(
-        ess_split_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ess_split_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_mean(data, prob, *, var_names=None):
+def relative_effective_sample_size_mean(data, *, var_names=None):
     r"""Calculate estimate of the relative effective sample size for the mean."""
     if isinstance(data, np.ndarray):
-        return _ress_mean(data, prob)
+        return _ress_mean(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -461,14 +460,14 @@ def relative_effective_sample_size_mean(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_mean_ufunc = _make_ufunc(_ress_mean, ravel=False)
     return xr.apply_ufunc(
-        ress_mean_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_mean_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_sd(data, prob, *, var_names=None):
+def relative_effective_sample_size_sd(data, *, var_names=None):
     r"""Calculate estimate of the relative effective sample size for the sd."""
     if isinstance(data, np.ndarray):
-        return _ress_sd(data, prob)
+        return _ress_sd(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -476,14 +475,14 @@ def relative_effective_sample_size_sd(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_sd_ufunc = _make_ufunc(_ress_sd, ravel=False)
     return xr.apply_ufunc(
-        ress_sd_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_sd_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_bulk(data, prob, *, var_names=None):
+def relative_effective_sample_size_bulk(data, *, var_names=None):
     r"""Calculate estimate of the bulk relative effective sample size."""
     if isinstance(data, np.ndarray):
-        return _ress_bulk(data, prob)
+        return _ress_bulk(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -491,14 +490,14 @@ def relative_effective_sample_size_bulk(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_bulk_ufunc = _make_ufunc(_ress_bulk, ravel=False)
     return xr.apply_ufunc(
-        ress_bulk_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_bulk_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_tail(data, prob, *, var_names=None):
+def relative_effective_sample_size_tail(data, *, var_names=None):
     r"""Calculate estimate of the relative effective sample size for ."""
     if isinstance(data, np.ndarray):
-        return _ress_tail(data, prob)
+        return _ress_tail(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -506,7 +505,7 @@ def relative_effective_sample_size_tail(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_tail_ufunc = _make_ufunc(_ress_tail, ravel=False)
     return xr.apply_ufunc(
-        ress_tail_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_tail_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
@@ -526,10 +525,10 @@ def relative_effective_sample_size_quantile(data, prob, *, var_names=None):
     )
 
 
-def relative_effective_sample_size_split(data, prob, *, var_names=None):
+def relative_effective_sample_size_split(data, *, var_names=None):
     r"""Calculate estimate of the relative split effective sample size."""
     if isinstance(data, np.ndarray):
-        return _ress_split(data, prob)
+        return _ress_split(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -537,15 +536,15 @@ def relative_effective_sample_size_split(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_split_ufunc = _make_ufunc(_ress_split, ravel=False)
     return xr.apply_ufunc(
-        ress_split_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_split_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_split_mad(data, prob, *, var_names=None):
+def relative_effective_sample_size_split_mad(data, *, var_names=None):
     r"""Calculate estimate of the relative split effective
     sample size for mean absolute deviance."""
     if isinstance(data, np.ndarray):
-        return _ress_split_mad(data, prob)
+        return _ress_split_mad(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -553,14 +552,14 @@ def relative_effective_sample_size_split_mad(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_split_mad_ufunc = _make_ufunc(_ress_split_mad, ravel=False)
     return xr.apply_ufunc(
-        ress_split_mad_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_split_mad_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_split_folded(data, prob, *, var_names=None):
+def relative_effective_sample_size_split_folded(data, *, var_names=None):
     r"""Calculate estimate of the relative split effective sample size for folded."""
     if isinstance(data, np.ndarray):
-        return _ress_split_folded(data, prob)
+        return _ress_split_folded(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -570,15 +569,14 @@ def relative_effective_sample_size_split_folded(data, prob, *, var_names=None):
     return xr.apply_ufunc(
         ress_split_folded_ufunc,
         dataset,
-        prob,
         input_core_dims=(("chain", "draw"), ("chain", "draw")),
     )
 
 
-def relative_effective_sample_size_split_median(data, prob, *, var_names=None):
+def relative_effective_sample_size_split_median(data, *, var_names=None):
     r"""Calculate estimate of the relative effective sample size for median."""
     if isinstance(data, np.ndarray):
-        return _ress_split_median(data, prob)
+        return _ress_split_median(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -586,14 +584,14 @@ def relative_effective_sample_size_split_median(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_median_ufunc = _make_ufunc(_ress_split_median, ravel=False)
     return xr.apply_ufunc(
-        ress_median_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_median_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
-def relative_effective_sample_size_z_scale(data, prob, *, var_names=None):
+def relative_effective_sample_size_z_scale(data, *, var_names=None):
     r"""Calculate estimate of the relative effective sample size for z-scale."""
     if isinstance(data, np.ndarray):
-        return _ress_z_scale(data, prob)
+        return _ress_z_scale(data)
 
     dataset = convert_to_dataset(data, group="posterior")
     var_names = _var_names(var_names, dataset)
@@ -601,7 +599,7 @@ def relative_effective_sample_size_z_scale(data, prob, *, var_names=None):
     dataset = dataset if var_names is None else dataset[var_names]
     ress_z_scale_ufunc = _make_ufunc(_ress_z_scale, ravel=False)
     return xr.apply_ufunc(
-        ress_z_scale_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+        ress_z_scale_ufunc, dataset, input_core_dims=(("chain", "draw"), ("chain", "draw"))
     )
 
 
