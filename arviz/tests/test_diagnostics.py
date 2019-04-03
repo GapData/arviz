@@ -171,7 +171,7 @@ class TestDiagnostics:
             ess_hat = ess(data, var_names=var_names, prob=0.34)
         else:
             ess_hat = ess(data, var_names=var_names)
-        assert ess_hat.mu > 100  # This might break if the data is regenerated
+        assert np.all(ress_hat.mu.values > 100)  # This might break if the data is regenerated
 
     @pytest.mark.parametrize(
         "ress",
@@ -265,7 +265,8 @@ class TestDiagnostics:
             ress_hat = ress(data, var_names=var_names, prob=0.34)
         else:
             ress_hat = ress(data, var_names=var_names)
-        assert ress_hat.mu > 100 / 1000  # This might break if the data is regenerated
+        n = data.posterior.chain.size * data.posterior.draw.size
+        assert np.all(ress_hat.mu.values > (100 / n))  # This might break if the data is regenerated
 
     @pytest.mark.parametrize("mcse", (mcse_mean, mcse_sd, mcse_quantile))
     def test_mcse_array(self, mcse):
