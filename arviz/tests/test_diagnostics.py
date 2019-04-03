@@ -171,7 +171,7 @@ class TestDiagnostics:
             ess_hat = ess(data, var_names=var_names, prob=0.34)
         else:
             ess_hat = ess(data, var_names=var_names)
-        assert np.all(ress_hat.mu.values > 100)  # This might break if the data is regenerated
+        assert np.all(ess_hat.mu.values > 100)  # This might break if the data is regenerated
 
     @pytest.mark.parametrize(
         "ress",
