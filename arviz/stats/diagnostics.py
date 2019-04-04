@@ -490,8 +490,7 @@ def relative_effective_sample_size_tail(data, *, var_names=None):
 
 
 def relative_effective_sample_size_quantile(data, prob, *, var_names=None):
-    r"""Calculate estimate of the relative effective sample size for quantile on specific quantile.
-    """
+    r"""Calculate estimate of the relative effective sample size for quantile."""
     if isinstance(data, np.ndarray):
         return _ress_quantile(data, prob)
 
@@ -521,7 +520,8 @@ def relative_effective_sample_size_split(data, *, var_names=None):
 def relative_effective_sample_size_split_mad(data, *, var_names=None):
     r"""Calculate estimate of the relative split effective sample size for mad.
 
-    mad = mean absolute deviance"""
+    mad = mean absolute deviance
+    """
     if isinstance(data, np.ndarray):
         return _ress_split_mad(data)
 
