@@ -207,7 +207,7 @@ def effective_sample_size_bulk(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-        Names of variables to include in the effective_sample_size_quantile report
+        Names of variables to include in the effective_sample_size_bulk report
 
     Returns
     -------
@@ -265,7 +265,7 @@ def effective_sample_size_tail(data, *, var_names=None):
         At least 2 posterior chains are needed to compute this diagnostic of one or more
         stochastic parameters.
     var_names : list
-        Names of variables to include in the effective_sample_size_quantile report
+        Names of variables to include in the effective_sample_size_tail report
 
     Returns
     -------
@@ -679,7 +679,9 @@ def mcse_quantile(data, prob, *, var_names=None):
 
     dataset = dataset if var_names is None else dataset[var_names]
     mcse_quantile_ufunc = _make_ufunc(_mcse_quantile, ravel=False)
-    return xr.apply_ufunc(mcse_quantile_ufunc, dataset, prob, input_core_dims=(("chain", "draw"),))
+    return xr.apply_ufunc(
+        mcse_quantile_ufunc, dataset, prob, input_core_dims=(("chain", "draw"), ("chain", "draw"))
+    )
 
 
 def geweke(ary, first=0.1, last=0.5, intervals=20):
