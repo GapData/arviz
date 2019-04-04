@@ -265,7 +265,7 @@ class TestDiagnostics:
             ress_hat = ress(data, var_names=var_names, prob=0.34)
         else:
             ress_hat = ress(data, var_names=var_names)
-        n = data.posterior.chain.size * data.posterior.draw.size
+        n = data.chain.size * data.draw.size
         assert np.all(ress_hat.mu.values > (100 / n))  # This might break if the data is regenerated
 
     @pytest.mark.parametrize("mcse", (mcse_mean, mcse_sd, mcse_quantile))
