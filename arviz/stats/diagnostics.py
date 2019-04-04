@@ -477,7 +477,7 @@ def relative_effective_sample_size_bulk(data, *, var_names=None):
 
 
 def relative_effective_sample_size_tail(data, *, var_names=None):
-    r"""Calculate estimate of the relative effective sample size for ."""
+    r"""Calculate estimate of the relative effective sample size for tails."""
     if isinstance(data, np.ndarray):
         return _ress_tail(data)
 
@@ -519,8 +519,9 @@ def relative_effective_sample_size_split(data, *, var_names=None):
 
 
 def relative_effective_sample_size_split_mad(data, *, var_names=None):
-    r"""Calculate estimate of the relative split effective
-    sample size for mean absolute deviance."""
+    r"""Calculate estimate of the relative split effective sample size for mad.
+
+    mad = mean absolute deviance"""
     if isinstance(data, np.ndarray):
         return _ress_split_mad(data)
 
@@ -886,6 +887,7 @@ def _rhat_rank_normalized(ary, round_to=2):
 
 
 def _rhat_split_folded(ary):
+    """Calculate split-Rhat for folded z-values."""
     ary = _z_split_fold(ary)
     return _rhat(ary)
 
@@ -994,18 +996,21 @@ def _ess_quantile(ary, prob):
 
 
 def _ess_split(ary):
+    """Calculate split-ess."""
     ary = np.asarray(ary)
     _check_valid_size(ary, "Effective sample size")
     return _ess(ary, split=True)
 
 
 def _ess_z_scale(ary, split=False):
+    """Calculate ess for z-scaLe."""
     ary = np.asarray(ary)
     _check_valid_size(ary, "Effective sample size")
     return _ess(_z_scale(ary), split=split)
 
 
 def _ess_split_folded(ary):
+    """Calculate split-ess for folded data."""
     ary = np.asarray(ary)
     _check_valid_size(ary, "Effective sample size")
     ary = _z_split_fold(ary)
@@ -1013,6 +1018,7 @@ def _ess_split_folded(ary):
 
 
 def _ess_split_median(ary):
+    """Calculate split-ess for median."""
     ary = np.asarray(ary)
     _check_valid_size(ary, "Effective sample size")
     ary = ary - np.median(ary)
@@ -1022,6 +1028,7 @@ def _ess_split_median(ary):
 
 
 def _ess_split_mad(ary):
+    """Calculate split-ess for mean absolute deviance."""
     ary = np.asarray(ary)
     _check_valid_size(ary, "Effective sample size")
     ary = ary - np.median(ary)
@@ -1102,7 +1109,7 @@ def _mcse_quantile(ary, prob):
 
 
 def _ress_mean(ary, ess=None, split=False):
-    """Relative mean effective sample size"""
+    """Relative mean effective sample size."""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_mean(ary, split=split)
@@ -1110,7 +1117,7 @@ def _ress_mean(ary, ess=None, split=False):
 
 
 def _ress_sd(ary, ess=None, split=False):
-    """Relative sd effective sample size"""
+    """Relative sd effective sample size."""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_sd(ary, split=split)
@@ -1118,7 +1125,7 @@ def _ress_sd(ary, ess=None, split=False):
 
 
 def _ress_bulk(ary, ess=None):
-    """Relative bulk effective sample size"""
+    """Relative bulk effective sample size."""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_bulk(ary)
@@ -1126,7 +1133,7 @@ def _ress_bulk(ary, ess=None):
 
 
 def _ress_tail(ary, ess=None):
-    """Relative tail effective sample size"""
+    """Relative tail effective sample size."""
     ary = np.asarray(ary)
     if ess is None:
         ess = _ess_tail(ary)
@@ -1134,7 +1141,7 @@ def _ress_tail(ary, ess=None):
 
 
 def _ress_quantile(ary, prob=None, ess=None):
-    """Relative quantile effective sample size"""
+    """Relative quantile effective sample size."""
     ary = np.asarray(ary)
     if ess is None:
         if prob is None:
